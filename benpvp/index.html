@@ -3,379 +3,286 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Fortnite Battle Royale - P2P Multiplayer</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
-    
-    <!-- Three.js & Loaders -->
+    <title>3D Battle Royale - Custom & Public Lobbies</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background: #0b0f19; color: #fff; }
+        #canvas-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; }
+        
+        /* UI Screens Overlay */
+        .ui-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 10; display: flex; flex-direction: column; justify-content: center;
+            align-items: center; background: radial-gradient(circle at center, rgba(15,23,42,0.9) 0%, rgba(3,7,18,0.95) 100%);
+            padding: 20px; overflow-y: auto; transition: opacity 0.3s ease;
+        }
+        .hidden { display: none !important; opacity: 0; pointer-events: none; }
+        
+        /* Panels & Cards */
+        .panel {
+            background: rgba(30, 41, 59, 0.85); border: 2px solid rgba(59, 130, 246, 0.5);
+            border-radius: 16px; padding: 30px; width: 100%; max-width: 600px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 0 20px rgba(59, 130, 246, 0.2);
+            backdrop-filter: blur(10px);
+        }
+        h1 { font-size: 2.5rem; font-weight: 900; text-align: center; margin-bottom: 25px; background: linear-gradient(to right, #60a5fa, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-transform: uppercase; letter-spacing: 2px; }
+        h2 { font-size: 1.5rem; margin-bottom: 15px; color: #93c5fd; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; }
+        
+        /* Form Controls */
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #cbd5e1; font-size: 0.95rem; }
+        input[type="text"], select {
+            width: 100%; padding: 12px 16px; background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 8px; color: #fff;
+            font-size: 1rem; outline: none; transition: all 0.2s;
+        }
+        input[type="text"]:focus, select:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); }
+        
+        .range-slider { display: flex; align-items: center; gap: 15px; }
+        input[type="range"] { flex: 1; accent-color: #3b82f6; cursor: pointer; }
+        .range-value { min-width: 45px; text-align: right; font-weight: bold; color: #60a5fa; }
+
+        /* Buttons */
+        .btn-container { display: flex; gap: 15px; margin-top: 25px; }
+        .btn {
+            flex: 1; padding: 14px 20px; border: none; border-radius: 8px; font-size: 1rem;
+            font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 1px;
+            transition: all 0.2s ease; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2);
+        }
+        .btn-primary { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; }
+        .btn-primary:hover { background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); transform: translateY(-2px); box-shadow: 0 6px 12px rgba(59, 130, 246, 0.4); }
+        .btn-secondary { background: rgba(51, 65, 85, 0.8); color: #e2e8f0; border: 1px solid rgba(148, 163, 184, 0.2); }
+        .btn-secondary:hover { background: rgba(71, 85, 105, 0.9); color: #fff; }
+        .btn-success { background: linear-gradient(135deg, #10b981 0%, #047857 100%); color: white; }
+        .btn-success:hover { background: linear-gradient(135deg, #059669 0%, #065f46 100%); transform: translateY(-2px); }
+
+        /* HUD Overlay */
+        #hud {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5;
+            pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 25px;
+        }
+        .hud-top { display: flex; justify-content: space-between; align-items: flex-start; }
+        .stats-box { background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(255,255,255,0.1); padding: 15px 20px; border-radius: 12px; backdrop-filter: blur(5px); }
+        .stat-item { font-size: 1.1rem; font-weight: 700; margin-bottom: 5px; color: #f8fafc; }
+        .health-bar-bg, .shield-bar-bg { width: 200px; height: 14px; background: rgba(0,0,0,0.5); border-radius: 7px; overflow: hidden; margin-top: 5px; border: 1px solid rgba(255,255,255,0.15); }
+        .health-fill { width: 100%; height: 100%; background: #22c55e; transition: width 0.2s; }
+        .shield-fill { width: 100%; height: 100%; background: #38bdf8; transition: width 0.2s; }
+
+        /* Crosshair */
+        #crosshair {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 10px; height: 10px; border: 2px solid rgba(255,255,255,0.8); border-radius: 50%;
+            pointer-events: none; z-index: 5;
+        }
+        #crosshair::after {
+            content: ''; position: absolute; top: 3px; left: 3px; width: 2px; height: 2px; background: #fff;
+        }
+
+        /* HUD Bottom (Inventory & Build) */
+        .hud-bottom { display: flex; justify-content: center; align-items: flex-end; gap: 20px; }
+        .inventory-bar { display: flex; gap: 10px; background: rgba(15, 23, 42, 0.8); padding: 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); }
+        .inv-slot { width: 60px; height: 60px; background: rgba(30, 41, 59, 0.9); border: 2px solid rgba(148, 163, 184, 0.3); border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold; position: relative; color: #94a3b8; }
+        .inv-slot.active { border-color: #3b82f6; box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); color: #fff; }
+        .inv-slot span { position: absolute; top: 4px; left: 6px; font-size: 0.7rem; color: #64748b; }
+
+        /* Logs / Toast */
+        #toast-container { position: absolute; bottom: 30px; left: 30px; z-index: 20; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+        .toast { background: rgba(15, 23, 42, 0.9); border-left: 4px solid #3b82f6; padding: 12px 20px; border-radius: 4px; font-size: 0.9rem; box-shadow: 0 4px 6px rgba(0,0,0,0.3); animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Player List in Lobby */
+        .player-list { max-height: 150px; overflow-y: auto; background: rgba(15, 23, 42, 0.5); border-radius: 8px; padding: 10px; margin-top: 15px; border: 1px solid rgba(255,255,255,0.05); }
+        .player-item { padding: 6px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; font-size: 0.9rem; }
+        .player-item:last-child { border-bottom: none; }
+    </style>
+    <!-- Three.js & GLTFLoader -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-
-    <!-- Firebase v9 Compat (App, Database) -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #0b0f19;
-            color: #ffffff;
-            overflow: hidden;
-            user-select: none;
-        }
-        .font-fortnite {
-            font-family: 'Bungee', cursive;
-            letter-spacing: 0.05em;
-        }
-        .fortnite-btn {
-            background: linear-gradient(135deg, #facc15 0%, #eab308 100%);
-            color: #000;
-            text-transform: uppercase;
-            font-weight: 900;
-            clip-path: polygon(5% 0, 100% 0, 95% 100%, 0 100%);
-            transition: all 0.15s ease-in-out;
-            box-shadow: 0 4px 15px rgba(234, 179, 8, 0.4);
-        }
-        .fortnite-btn:hover {
-            transform: scale(1.03) translateY(-2px);
-            background: linear-gradient(135deg, #fef08a 0%, #facc15 100%);
-            box-shadow: 0 6px 20px rgba(250, 204, 21, 0.6);
-        }
-        .fortnite-btn-blue {
-            background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
-            color: #fff;
-            text-transform: uppercase;
-            font-weight: 900;
-            clip-path: polygon(5% 0, 100% 0, 95% 100%, 0 100%);
-            transition: all 0.15s ease-in-out;
-            box-shadow: 0 4px 15px rgba(2, 132, 199, 0.4);
-        }
-        .fortnite-btn-blue:hover {
-            transform: scale(1.03) translateY(-2px);
-            background: linear-gradient(135deg, #7dd3fc 0%, #0369a1 100%);
-            box-shadow: 0 6px 20px rgba(56, 189, 248, 0.6);
-        }
-        .glass-panel {
-            background: rgba(15, 23, 42, 0.88);
-            backdrop-filter: blur(14px);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-        }
-        #crosshair {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 12px;
-            height: 12px;
-            transform: translate(-50%, -50%);
-            pointer-events: none;
-            z-index: 30;
-        }
-        #crosshair::before, #crosshair::after {
-            content: '';
-            position: absolute;
-            background: rgba(255, 255, 255, 0.9);
-            box-shadow: 0 0 4px rgba(0,0,0,0.8);
-        }
-        #crosshair::before { top: 5px; left: -10px; width: 32px; height: 2px; }
-        #crosshair::after { top: -10px; left: 5px; width: 2px; height: 32px; }
-    </style>
 </head>
-<body class="w-screen h-screen relative flex flex-col justify-center items-center">
+<body>
+    <div id="canvas-container"></div>
+    <div id="crosshair" class="hidden"></div>
 
-    <!-- NETWORKING DEBUG / LOG OVERLAY -->
-    <div id="net-log" class="absolute top-4 left-4 z-50 flex flex-col gap-1 max-w-md pointer-events-none"></div>
-
-    <!-- MAIN MENU OVERLAY -->
-    <div id="main-menu" class="absolute inset-0 z-40 flex flex-col items-center justify-center bg-slate-950 bg-opacity-95 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 via-purple-950 to-slate-950 p-4">
-        
-        <div class="text-center mb-6 transform -rotate-1">
-            <div class="inline-block px-4 py-1 bg-yellow-400 text-slate-950 font-fortnite text-xs md:text-sm rounded mb-2 tracking-widest shadow-lg">3D MULTIPLAYER • REALTIME SIGNALING • WEBRTC</div>
-            <h1 class="text-5xl md:text-7xl font-fortnite text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 drop-shadow-[0_5px_5px_rgba(0,0,0,0.8)]">
-                FORTNITE 3D P2P
-            </h1>
-            <p class="text-cyan-400 text-xs md:text-sm font-semibold mt-1 tracking-wider">REAL PLAYERS • REALTIME DATABASE SYNC • 3D BUILDING</p>
-        </div>
-
-        <!-- PLAYER NAME SELECTION -->
-        <div class="w-full max-w-md mb-6 glass-panel p-4 rounded-2xl border border-yellow-500/30 flex items-center gap-3">
-            <i class="fa-solid fa-user-astronaut text-yellow-400 text-2xl"></i>
-            <div class="flex-1">
-                <label class="block text-[10px] font-bold text-slate-400 uppercase">Your Player Display Name</label>
-                <input type="text" id="player-display-name" value="VictoryPlayer" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm font-bold text-yellow-400 focus:outline-none focus:border-yellow-400">
-            </div>
-        </div>
-
-        <div class="w-full max-w-5xl px-4 flex flex-col md:flex-row gap-6 justify-center items-stretch overflow-y-auto max-h-[65vh] p-2">
+    <!-- MAIN MENU SCREEN -->
+    <div id="screen-main" class="ui-screen">
+        <div class="panel" style="max-width: 500px; text-align: center;">
+            <h1>Battle Royale 3D</h1>
+            <p style="color: #94a3b8; margin-bottom: 25px;">Real-time P2P Multiplayer & Custom Lobbies</p>
             
-            <!-- OPTION A: PUBLIC MATCHMAKING -->
-            <div class="flex-1 glass-panel p-6 rounded-3xl flex flex-col justify-between border-2 border-cyan-500/30 hover:border-cyan-400 transition-all duration-300">
-                <div>
-                    <div class="flex items-center justify-between mb-4">
-                        <span class="px-3 py-1 bg-cyan-500/20 text-cyan-300 text-xs font-bold rounded-full uppercase border border-cyan-500/40">Matchmaking</span>
-                        <i class="fa-solid fa-globe text-cyan-400 text-2xl"></i>
-                    </div>
-                    <h2 class="text-2xl font-fortnite text-white mb-2">PUBLIC LOBBY</h2>
-                    <p class="text-slate-400 text-xs md:text-sm mb-6">Instantly join or auto-host an open public room for standard Battle Royale.</p>
-                    
-                    <div class="space-y-3 mb-6 bg-slate-900/60 p-4 rounded-xl border border-slate-800">
-                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Select Match Capacity</label>
-                        <div class="grid grid-cols-3 gap-2">
-                            <button onclick="setPublicSize(10)" id="pub-btn-10" class="pub-size-btn py-2 rounded-lg font-bold text-xs bg-cyan-600 text-white border border-cyan-400">10 Players</button>
-                            <button onclick="setPublicSize(20)" id="pub-btn-20" class="pub-size-btn py-2 rounded-lg font-bold text-xs bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700">20 Players</button>
-                            <button onclick="setPublicSize(50)" id="pub-btn-50" class="pub-size-btn py-2 rounded-lg font-bold text-xs bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700">50 Players</button>
-                        </div>
-                    </div>
-                </div>
-
-                <button onclick="joinPublicLobby()" class="fortnite-btn py-4 text-lg w-full text-center tracking-wider">
-                    <i class="fa-solid fa-play mr-2"></i> FIND PUBLIC MATCH
-                </button>
+            <div class="form-group" style="text-align: left;">
+                <label>Player Name</label>
+                <input type="text" id="input-player-name" value="Player1">
             </div>
 
-            <!-- OPTION B: CUSTOM LOBBY -->
-            <div class="flex-1 glass-panel p-6 rounded-3xl flex flex-col justify-between border-2 border-purple-500/30 hover:border-purple-400 transition-all duration-300">
-                <div>
-                    <div class="flex items-center justify-between mb-4">
-                        <span class="px-3 py-1 bg-purple-500/20 text-purple-300 text-xs font-bold rounded-full uppercase border border-purple-500/40">Custom Room Code</span>
-                        <i class="fa-solid fa-sliders text-purple-400 text-2xl"></i>
-                    </div>
-                    <h2 class="text-2xl font-fortnite text-white mb-2">CUSTOM LOBBY</h2>
-                    <p class="text-slate-400 text-xs md:text-sm mb-4">Create or join custom lobbies with room codes, theme selection, custom rules, and GLTF GitHub skins.</p>
-
-                    <div class="mb-4">
-                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Enter Room Code (To Join)</label>
-                        <div class="flex gap-2">
-                            <input type="text" id="custom-room-code-input" placeholder="e.g. FORT-8492" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-yellow-400 font-bold focus:outline-none focus:border-purple-400 uppercase">
-                            <button onclick="joinCustomByCode()" class="fortnite-btn-blue px-4 text-xs">JOIN</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="space-y-3">
-                    <button onclick="openCustomModal()" class="fortnite-btn-blue py-3 text-sm w-full text-center tracking-wider">
-                        <i class="fa-solid fa-plus mr-2"></i> CREATE NEW CUSTOM LOBBY
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Controls Banner -->
-        <div class="mt-6 flex flex-wrap justify-center gap-4 text-xs text-slate-400 font-semibold bg-slate-900/90 px-6 py-3 rounded-full border border-slate-800">
-            <span><span class="text-yellow-400">WASD</span> Move</span>
-            <span><span class="text-yellow-400">MOUSE</span> 3D Look (Click screen to lock)</span>
-            <span><span class="text-yellow-400">LEFT CLICK</span> Fire Weapon</span>
-            <span><span class="text-yellow-400">RIGHT CLICK / Q</span> Build Wooden Wall</span>
-            <span><span class="text-yellow-400">1-5</span> Select Active Slot</span>
-            <span><span class="text-yellow-400">SPACE</span> Jump</span>
-            <span><span class="text-yellow-400">SHIFT</span> Sprint</span>
-        </div>
-    </div>
-
-    <!-- LOBBY WAITING ROOM OVERLAY -->
-    <div id="waiting-room" class="hidden absolute inset-0 z-40 flex flex-col items-center justify-center bg-slate-950/95 backdrop-blur-lg p-4">
-        <div class="glass-panel w-full max-w-2xl p-6 md:p-8 rounded-3xl border border-cyan-500/40 shadow-2xl relative flex flex-col justify-between min-h-[60vh]">
-            <div>
-                <div class="flex justify-between items-center mb-6 pb-4 border-b border-slate-800">
-                    <div>
-                        <span class="text-xs text-slate-400 font-bold uppercase tracking-widest">LOBBY ROOM CODE</span>
-                        <h2 id="wait-room-code" class="text-3xl font-fortnite text-yellow-400">FORT-0000</h2>
-                    </div>
-                    <button onclick="copyRoomCode()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold text-cyan-300 rounded-xl border border-slate-700">
-                        <i class="fa-solid fa-copy mr-1"></i> COPY CODE
-                    </button>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4 mb-6">
-                    <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800">
-                        <span class="text-[10px] text-slate-400 font-bold uppercase">HOST NAME</span>
-                        <div id="wait-host-name" class="font-bold text-white text-sm">VictoryHost</div>
-                    </div>
-                    <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800">
-                        <span class="text-[10px] text-slate-400 font-bold uppercase">MAP THEME / RULES</span>
-                        <div id="wait-theme-desc" class="font-bold text-cyan-300 text-sm">Grassland • Standard</div>
-                    </div>
-                </div>
-
-                <div class="mb-6">
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="text-xs font-bold text-slate-300 uppercase">CONNECTED PLAYERS (<span id="wait-player-count">1</span>/<span id="wait-max-count">20</span>)</span>
-                    </div>
-                    <div id="wait-player-list" class="space-y-2 max-h-48 overflow-y-auto pr-1">
-                        <!-- Dynamic Player List -->
-                    </div>
-                </div>
-            </div>
-
-            <div class="flex gap-4">
-                <button onclick="leaveLobby()" class="flex-1 py-3 bg-rose-950/80 hover:bg-rose-900 text-rose-300 font-bold rounded-xl border border-rose-800 text-sm">
-                    LEAVE LOBBY
-                </button>
-                <button id="btn-start-game" onclick="hostStartMatch()" class="hidden flex-2 fortnite-btn py-3 text-lg px-8">
-                    START MATCH NOW
-                </button>
+            <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 20px;">
+                <button class="btn btn-primary" onclick="showScreen('screen-public')">Public Matchmaking</button>
+                <button class="btn btn-success" onclick="showScreen('screen-custom-lobby')">Custom Lobby</button>
+                <button class="btn btn-secondary" onclick="showScreen('screen-customization')">Character & Skin Studio</button>
             </div>
         </div>
     </div>
 
-    <!-- CUSTOM LOBBY CONFIG MODAL -->
-    <div id="custom-modal" class="hidden absolute inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4">
-        <div class="glass-panel w-full max-w-2xl p-6 md:p-8 rounded-3xl border border-purple-500/40 shadow-2xl relative max-h-[90vh] overflow-y-auto">
-            <button onclick="closeCustomModal()" class="absolute top-6 right-6 text-slate-400 hover:text-white text-xl">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-            <h2 class="text-2xl font-fortnite text-purple-400 mb-6 flex items-center gap-3">
-                <i class="fa-solid fa-sliders"></i> CREATE CUSTOM LOBBY
-            </h2>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <!-- Max Capacity -->
-                <div>
-                    <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Max Players (2 - 50)</label>
-                    <input type="number" id="cust-max-players" value="10" min="2" max="50" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
-                </div>
-                <!-- Environment Theme -->
-                <div>
-                    <label class="block text-xs font-bold text-slate-300 uppercase mb-1">3D Arena Theme</label>
-                    <select id="cust-theme" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
-                        <option value="grassland">🌱 Grassland</option>
-                        <option value="desert">🏜️ Desert</option>
-                        <option value="snow">❄️ Snow</option>
-                        <option value="urban">🏙️ Urban Arena</option>
-                    </select>
-                </div>
-                <!-- Storm Speed -->
-                <div>
-                    <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Storm Shrink Speed</label>
-                    <select id="cust-storm" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
-                        <option value="slow">Slow & Mild</option>
-                        <option value="normal" selected>Standard Blitz</option>
-                        <option value="fast">Fast Hyper-Zone</option>
-                    </select>
-                </div>
-                <!-- Initial Shield -->
-                <div>
-                    <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Initial Shield</label>
-                    <select id="cust-shield" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
-                        <option value="0">0 Shield</option>
-                        <option value="50" selected>50 Shield</option>
-                        <option value="100">100 Full Shield</option>
-                    </select>
-                </div>
+    <!-- PUBLIC MATCHMAKING SCREEN -->
+    <div id="screen-public" class="ui-screen hidden">
+        <div class="panel">
+            <h1>Public Matchmaking</h1>
+            <div class="form-group">
+                <label>Lobby Size</label>
+                <select id="select-public-size">
+                    <option value="10">Small (10 Players)</option>
+                    <option value="20" selected>Medium (20 Players)</option>
+                    <option value="50">Large (50 Players)</option>
+                </select>
             </div>
-
-            <!-- GITHUB GLTF SKIN URL -->
-            <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 mb-6 space-y-2">
-                <div class="flex items-center gap-2">
-                    <i class="fa-brands fa-github text-yellow-400 text-xl"></i>
-                    <h3 class="font-fortnite text-sm text-white">CUSTOM GITHUB 3D GLTF/GLB MODEL</h3>
-                </div>
-                <p class="text-xs text-slate-400">Provide a raw `.gltf` or `.glb` model URL from GitHub to render your avatar, or leave blank to use default procedural avatar.</p>
-                <input type="text" id="cust-github-url" placeholder="https://raw.githubusercontent.com/user/repo/main/model.glb" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-cyan-300 focus:outline-none focus:border-cyan-400">
+            <div class="form-group">
+                <label>Environment Theme</label>
+                <select id="select-public-theme">
+                    <option value="grass">Grasslands</option>
+                    <option value="desert">Desert Wasteland</option>
+                    <option value="snow">Snowy Tundra</option>
+                    <option value="urban">Cyberpunk Urban</option>
+                </select>
             </div>
-
-            <button onclick="createCustomLobbyAction()" class="fortnite-btn py-3 text-lg w-full text-center">
-                CREATE ROOM & OPEN WAITING LOBBY
-            </button>
-        </div>
-    </div>
-
-    <!-- HUD OVERLAY -->
-    <div id="game-hud" class="hidden absolute inset-0 pointer-events-none z-30 flex flex-col justify-between p-4 md:p-6">
-        <div id="crosshair"></div>
-
-        <!-- Top Bar: Health, Shield, Alive Counter -->
-        <div class="flex justify-between items-start">
-            <div class="flex flex-col gap-2 w-64 md:w-80">
-                <!-- Shield -->
-                <div class="bg-slate-900/90 border-2 border-cyan-500/60 p-1.5 rounded-xl shadow-lg relative overflow-hidden">
-                    <div class="flex justify-between text-xs font-extrabold text-cyan-300 px-2 mb-1 z-10 relative">
-                        <span><i class="fa-solid fa-shield-halved mr-1"></i> SHIELD</span>
-                        <span id="hud-shield-num">50 / 100</span>
-                    </div>
-                    <div class="w-full bg-slate-800 h-3 rounded-md overflow-hidden">
-                        <div id="hud-shield-bar" class="bg-gradient-to-r from-cyan-400 to-blue-500 h-full transition-all duration-150" style="width: 50%;"></div>
-                    </div>
-                </div>
-                <!-- Health -->
-                <div class="bg-slate-900/90 border-2 border-emerald-500/60 p-1.5 rounded-xl shadow-lg relative overflow-hidden">
-                    <div class="flex justify-between text-xs font-extrabold text-emerald-300 px-2 mb-1 z-10 relative">
-                        <span><i class="fa-solid fa-heart mr-1"></i> HEALTH</span>
-                        <span id="hud-health-num">100 / 100</span>
-                    </div>
-                    <div class="w-full bg-slate-800 h-3 rounded-md overflow-hidden">
-                        <div id="hud-health-bar" class="bg-gradient-to-r from-emerald-400 to-green-600 h-full transition-all duration-150" style="width: 100%;"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Stats -->
-            <div class="flex gap-3">
-                <div class="glass-panel px-4 py-2 rounded-xl flex items-center gap-3 border border-yellow-500/40">
-                    <i class="fa-solid fa-users text-yellow-400 text-xl"></i>
-                    <div>
-                        <div class="text-[10px] text-slate-400 font-bold uppercase">ALIVE PLAYERS</div>
-                        <div id="hud-alive" class="font-fortnite text-xl text-yellow-400">1</div>
-                    </div>
-                </div>
-                <div class="glass-panel px-4 py-2 rounded-xl flex items-center gap-3 border border-rose-500/40">
-                    <i class="fa-solid fa-crosshairs text-rose-400 text-xl"></i>
-                    <div>
-                        <div class="text-[10px] text-slate-400 font-bold uppercase">ELIMS</div>
-                        <div id="hud-elims" class="font-fortnite text-xl text-rose-400">0</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Center Kill Feed -->
-        <div id="kill-feed" class="self-center flex flex-col items-center gap-1 max-h-24 overflow-hidden text-xs font-bold pointer-events-none"></div>
-
-        <!-- Bottom Bar: Wood Materials & Inventory Hotbar -->
-        <div class="flex justify-between items-end gap-4">
-            <div class="glass-panel px-4 py-3 rounded-2xl flex items-center gap-3 border border-amber-600/50">
-                <i class="fa-solid fa-cubes text-amber-500 text-2xl"></i>
-                <div>
-                    <div class="text-[10px] text-slate-400 font-bold uppercase">WOOD MATS (Q / RMB)</div>
-                    <div id="hud-wood" class="font-fortnite text-2xl text-amber-400">100</div>
-                </div>
-            </div>
-
-            <div id="hud-inventory" class="flex gap-2 bg-slate-950/80 p-2 rounded-2xl border border-slate-800 pointer-events-auto">
-                <!-- Weapon slots dynamically generated -->
+            <div class="btn-container">
+                <button class="btn btn-secondary" onclick="showScreen('screen-main')">Back</button>
+                <button class="btn btn-primary" onclick="joinPublicLobby()">Find & Join Match</button>
             </div>
         </div>
     </div>
 
-    <!-- END GAME OVERLAY -->
-    <div id="end-screen" class="hidden absolute inset-0 z-50 flex flex-col items-center justify-center bg-slate-950/90 backdrop-blur-lg">
-        <div class="text-center p-8 glass-panel rounded-3xl max-w-md w-full border border-slate-700 shadow-2xl">
-            <div id="end-banner" class="text-5xl font-fortnite mb-2 text-yellow-400">VICTORY ROYALE!</div>
-            <p id="end-subtitle" class="text-slate-300 font-semibold mb-6">#1 - Last Player Standing!</p>
-
-            <div class="grid grid-cols-2 gap-4 mb-8 bg-slate-900/80 p-4 rounded-2xl border border-slate-800">
-                <div>
-                    <div class="text-xs text-slate-400 font-bold uppercase">Eliminations</div>
-                    <div id="end-elims" class="font-fortnite text-3xl text-rose-400">0</div>
+    <!-- CUSTOM LOBBY SCREEN -->
+    <div id="screen-custom-lobby" class="ui-screen hidden">
+        <div class="panel">
+            <h1>Custom Lobby Studio</h1>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group">
+                    <label>Max Players</label>
+                    <input type="text" id="custom-max-players" value="16">
                 </div>
-                <div>
-                    <div class="text-xs text-slate-400 font-bold uppercase">Placement</div>
-                    <div id="end-rank" class="font-fortnite text-3xl text-yellow-400">#1</div>
+                <div class="form-group">
+                    <label>Room Code</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="custom-room-code" value="ROOM123">
+                        <button class="btn btn-secondary" style="padding: 0 12px;" onclick="generateRoomCode()">Gen</button>
+                    </div>
                 </div>
             </div>
 
-            <button onclick="returnToMenu()" class="fortnite-btn py-4 text-xl w-full text-center">
-                MAIN MENU
-            </button>
+            <div class="form-group">
+                <label>Environment Theme</label>
+                <select id="custom-theme">
+                    <option value="grass">Grasslands</option>
+                    <option value="desert">Desert Wasteland</option>
+                    <option value="snow">Snowy Tundra</option>
+                    <option value="urban">Cyberpunk Urban</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Storm Speed Multiplier</label>
+                <div class="range-slider">
+                    <input type="range" id="custom-storm-speed" min="0.5" max="3" step="0.5" value="1" oninput="updateRangeVal('custom-storm-speed', 'val-storm-speed')">
+                    <span id="val-storm-speed" class="range-value">1.0x</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Starting Shield</label>
+                <select id="custom-shield">
+                    <option value="0">0 HP (No Shield)</option>
+                    <option value="50" selected>50 HP Shield</option>
+                    <option value="100">100 HP Full Shield</option>
+                </select>
+            </div>
+
+            <div class="btn-container">
+                <button class="btn btn-secondary" onclick="showScreen('screen-main')">Back</button>
+                <button class="btn btn-success" onclick="createCustomRoom()">Create & Host</button>
+                <button class="btn btn-primary" onclick="joinCustomRoom()">Join by Code</button>
+            </div>
         </div>
     </div>
 
-    <!-- FIREBASE INITIALIZATION & REALTIME P2P SIGNALING ENGINE -->
-    <script>
-        // Exact Firebase Config provided
+    <!-- CHARACTER & SKIN STUDIO SCREEN -->
+    <div id="screen-customization" class="ui-screen hidden">
+        <div class="panel">
+            <h1>Character Studio</h1>
+            
+            <div class="form-group">
+                <label>Body Outfit Color</label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="color" id="skin-color" value="#3b82f6" style="width: 60px; height: 40px; border: none; border-radius: 8px; cursor: pointer; background: none;">
+                    <input type="text" id="skin-color-hex" value="#3b82f6" readonly>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>GitHub GLTF / GLB Custom Model URL</label>
+                <input type="text" id="github-model-url" placeholder="https://raw.githubusercontent.com/user/repo/main/model.glb">
+                <p style="font-size: 0.8rem; color: #94a3b8; margin-top: 5px;">Leave blank to use procedural 3D character builder, or paste direct raw GitHub GLTF file link.</p>
+            </div>
+
+            <div class="btn-container">
+                <button class="btn btn-secondary" onclick="showScreen('screen-main')">Back</button>
+                <button class="btn btn-primary" onclick="saveCharacterStudio()">Save & Return</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- WAITING ROOM / LOBBY ROOM SCREEN -->
+    <div id="screen-waiting" class="ui-screen hidden">
+        <div class="panel" style="text-align: center;">
+            <h1 id="waiting-title">Room: ROOM123</h1>
+            <p style="color: #94a3b8; margin-bottom: 15px;">Share code with friends to let them join!</p>
+            
+            <div style="background: rgba(15,23,42,0.8); padding: 15px; border-radius: 8px; font-size: 1.2rem; font-weight: bold; letter-spacing: 2px; color: #60a5fa;" id="display-room-code">ROOM123</div>
+
+            <div class="player-list" id="waiting-player-list">
+                <!-- Players populated dynamically -->
+            </div>
+
+            <div class="btn-container" style="margin-top: 25px;">
+                <button class="btn btn-secondary" onclick="leaveRoom()">Leave Room</button>
+                <button id="btn-start-match" class="btn btn-success hidden" onclick="startMatchHost()">Start Match</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- IN-GAME HUD -->
+    <div id="hud" class="hidden">
+        <div class="hud-top">
+            <div class="stats-box">
+                <div class="stat-item" id="hud-players-left">Players Alive: 1</div>
+                <div class="stat-item" id="hud-kills">Eliminations: 0</div>
+                <div class="stat-item" id="hud-materials">Wood: <span id="mat-count">100</span></div>
+            </div>
+            <div class="stats-box" style="text-align: right;">
+                <div class="stat-item">HEALTH</div>
+                <div class="health-bar-bg"><div id="health-fill" class="health-fill"></div></div>
+                <div class="stat-item" style="margin-top: 10px;">SHIELD</div>
+                <div class="shield-bar-bg"><div id="shield-fill" class="shield-fill"></div></div>
+            </div>
+        </div>
+
+        <div class="hud-bottom">
+            <div class="inventory-bar">
+                <div class="inv-slot active" id="slot-0"><span>1</span>AR<div style="font-size:0.7rem; color:#60a5fa;">30</div></div>
+                <div class="inv-slot" id="slot-1"><span>2</span>Shotgun<div style="font-size:0.7rem; color:#60a5fa;">8</div></div>
+                <div class="inv-slot" id="slot-2"><span>3</span>Sniper<div style="font-size:0.7rem; color:#60a5fa;">5</div></div>
+                <div class="inv-slot" id="slot-3"><span>4</span>Medkit</div>
+                <div class="inv-slot" id="slot-4"><span>5</span>Shield</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, get, onValue, update, remove, push, child } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
         const firebaseConfig = {
             apiKey: "AIzaSyCZwwg8vlYo3LV_k4I9BydIcbKkU_xO9a8",
             authDomain: "file-share-a5d42.firebaseapp.com",
@@ -387,879 +294,324 @@
             measurementId: "G-6JYDD5G7S4"
         };
 
-        // Initialize Firebase
-        let firebaseApp, db;
-        try {
-            firebaseApp = firebase.initializeApp(firebaseConfig);
-            db = firebase.database();
-            logNetStatus("Firebase DB Initialized Successfully", "success");
-        } catch(e) {
-            console.error("Firebase Init Error:", e);
-            logNetStatus("Firebase Init Failed: Operating Offline", "error");
-        }
-
-        // WebRTC Configuration with STUN servers
-        const rtcConfig = {
-            iceServers: [
-                { urls: "stun:stun.l.google.com:19020" },
-                { urls: "stun:stun1.l.google.com:19020" },
-                { urls: "stun:stun2.l.google.com:19020" }
-            ]
-        };
-
-        // Networking State Variables
-        const myPeerId = 'player_' + Math.floor(Math.random() * 899999 + 100000);
-        let currentRoomId = null;
-        let isHost = false;
-        let peerConnections = {}; // peerId -> RTCPeerConnection
-        let dataChannels = {};    // peerId -> RTCDataChannel
-        let remotePlayers = {};   // peerId -> { mesh, data, health, shield }
-        let roomRef = null;
-
-        function logNetStatus(msg, type = "info") {
-            const container = document.getElementById('net-log');
-            if (!container) return;
-            const toast = document.createElement('div');
-            const bgClass = type === 'error' ? 'bg-rose-900/90 text-rose-200 border-rose-700' :
-                           type === 'success' ? 'bg-emerald-900/90 text-emerald-200 border-emerald-700' :
-                           'bg-slate-900/90 text-cyan-300 border-slate-700';
-            toast.className = `px-3 py-1.5 rounded-xl border text-xs font-semibold shadow-lg backdrop-blur-md ${bgClass} transition-all duration-300`;
-            toast.innerHTML = `<i class="fa-solid fa-circle-info mr-1.5"></i> ${msg}`;
-            container.appendChild(toast);
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 400);
-            }, 4000);
-        }
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        window.db = db;
+        window.dbRefs = { ref, set, get, onValue, update, remove, push, child };
+        showToast("Connected to Firebase successfully!");
     </script>
 
-    <!-- 3D THREE.JS ENGINE & GAMEPLAY LOGIC -->
+    <!-- Game Logic & Three.js Script -->
     <script>
-        const WEAPONS = {
-            rifle: { name: 'Assault Rifle', color: '#facc15', damage: 28, fireRate: 140, icon: 'fa-shield-cat' },
-            shotgun: { name: 'Pump Shotgun', color: '#38bdf8', damage: 70, fireRate: 850, icon: 'fa-burst' },
-            sniper: { name: 'Sniper Rifle', color: '#a855f7', damage: 110, fireRate: 1400, icon: 'fa-crosshairs' },
-            medkit: { name: 'Medkit (+50 HP)', color: '#10b981', heal: 50, isConsumable: true, icon: 'fa-kit-medical' },
-            shield: { name: 'Shield Potion (+50)', color: '#06b6d4', shield: 50, isConsumable: true, icon: 'fa-bottle-water' }
-        };
-
-        const THEMES = {
-            grassland: { ground: 0x2d5a27, fog: 0x87ceeb, tree: 0x15803d, rock: 0x64748b },
-            desert: { ground: 0xd97706, fog: 0xfef08a, tree: 0xb45309, rock: 0x78350f },
-            snow: { ground: 0xe2e8f0, fog: 0xcbd5e1, tree: 0x0284c7, rock: 0x475569 },
-            urban: { ground: 0x334155, fog: 0x94a3b8, tree: 0x475569, rock: 0x1e293b }
-        };
-
-        let scene, camera, renderer;
-        let clock = new THREE.Clock();
-        let gltfLoader = new THREE.GLTFLoader();
-
-        let localPlayerMesh = null;
-        let localPlayer = {
-            position: new THREE.Vector3(0, 2, 0),
-            velocity: new THREE.Vector3(),
-            rotationY: 0,
-            rotationX: 0,
+        // Global State
+        let currentScreen = 'screen-main';
+        let gameState = {
+            playerName: 'Player1',
+            roomCode: 'ROOM123',
+            isHost: false,
+            theme: 'grass',
+            maxPlayers: 16,
+            stormSpeed: 1.0,
+            startingShield: 50,
+            skinColor: '#3b82f6',
+            githubModelUrl: '',
+            inMatch: false,
             health: 100,
             shield: 50,
-            wood: 100,
-            inventory: [
-                { ...WEAPONS.rifle },
-                { ...WEAPONS.shotgun },
-                { ...WEAPONS.sniper },
-                { ...WEAPONS.medkit },
-                { ...WEAPONS.shield }
-            ],
-            selectedSlot: 0,
-            lastShot: 0,
-            isGrounded: true,
-            displayName: 'VictoryPlayer'
+            kills: 0,
+            materials: 100,
+            selectedSlot: 0
         };
 
-        let gameState = 'MENU';
-        let eliminations = 0;
-        let publicLobbySize = 10;
-        let keys = {};
+        let playersRefUnsub = null;
+        let matchStateRefUnsub = null;
+        let myPlayerId = 'p_' + Math.random().toString(36.substring(2, 9));
+
+        function showToast(msg) {
+            const container = document.getElementById('toast-container');
+            const t = document.createElement('div');
+            t.className = 'toast';
+            t.innerText = msg;
+            container.appendChild(t);
+            setTimeout(() => t.remove(), 4000);
+        }
+
+        function showScreen(screenId) {
+            document.querySelectorAll('.ui-screen').forEach(s => s.classList.add('hidden'));
+            document.getElementById(screenId).classList.remove('hidden');
+            currentScreen = screenId;
+        }
+
+        function updateRangeVal(sliderId, valId) {
+            document.getElementById(valId).value = document.getElementById(sliderId).value + 'x';
+        }
+
+        function generateRoomCode() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let code = '';
+            for(let i=0; i<6; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+            document.getElementById('custom-room-code').value = code;
+        }
+
+        document.getElementById('skin-color').addEventListener('input', (e) => {
+            document.getElementById('skin-color-hex').value = e.target.value;
+            gameState.skinColor = e.target.value;
+        });
+
+        function saveCharacterStudio() {
+            gameState.playerName = document.getElementById('input-player-name').value || 'Player';
+            gameState.githubModelUrl = document.getElementById('github-model-url').value;
+            showToast("Character settings saved!");
+            showScreen('screen-main');
+        }
+
+        // Lobby Functions
+        async function joinPublicLobby() {
+            gameState.playerName = document.getElementById('input-player-name').value || 'Player';
+            gameState.theme = document.getElementById('select-public-theme').value;
+            gameState.maxPlayers = parseInt(document.getElementById('select-public-size').value);
+            gameState.roomCode = 'PUB_' + Math.floor(Math.random() * 900 + 100);
+            gameState.isHost = false;
+            
+            await enterWaitingRoom();
+        }
+
+        async function createCustomRoom() {
+            gameState.playerName = document.getElementById('input-player-name').value || 'Player';
+            gameState.roomCode = document.getElementById('custom-room-code').value || 'ROOM123';
+            gameState.maxPlayers = parseInt(document.getElementById('custom-max-players').value) || 16;
+            gameState.theme = document.getElementById('custom-theme').value;
+            gameState.stormSpeed = parseFloat(document.getElementById('custom-storm-speed').value);
+            gameState.startingShield = parseInt(document.getElementById('custom-shield').value);
+            gameState.isHost = true;
+
+            await enterWaitingRoom();
+        }
+
+        async function joinCustomRoom() {
+            gameState.playerName = document.getElementById('input-player-name').value || 'Player';
+            gameState.roomCode = document.getElementById('custom-room-code').value.trim().toUpperCase();
+            gameState.isHost = false;
+
+            if(!gameState.roomCode) {
+                showToast("Please enter a valid room code!");
+                return;
+            }
+            await enterWaitingRoom();
+        }
+
+        async function enterWaitingRoom() {
+            showScreen('screen-waiting');
+            document.getElementById('waiting-title').innerText = `Room: ${gameState.roomCode}`;
+            document.getElementById('display-room-code').innerText = gameState.roomCode;
+
+            const startBtn = document.getElementById('btn-start-match');
+            if(gameState.isHost) {
+                startBtn.classList.remove('hidden');
+            } else {
+                startBtn.classList.add('hidden');
+            }
+
+            // Register in Firebase Realtime DB
+            const db = window.db;
+            const { ref, set, onValue, remove, update, onDisconnect } = window.dbRefs;
+
+            const playerRef = ref(db, `rooms/${gameState.roomCode}/players/${myPlayerId}`);
+            await set(playerRef, {
+                name: gameState.playerName,
+                isHost: gameState.isHost,
+                ready: true,
+                x: 0, z: 0, rot: 0
+            });
+            onDisconnect(playerRef).remove();
+
+            // Listen to players list
+            const playersRef = ref(db, `rooms/${gameState.roomCode}/players`);
+            playersRefUnsub = onValue(playersRef, (snapshot) => {
+                const data = snapshot.val() || {};
+                const listEl = document.getElementById('waiting-player-list');
+                listEl.innerHTML = '';
+                Object.values(data).forEach(p => {
+                    const item = document.createElement('div');
+                    item.className = 'player-item';
+                    item.innerHTML = `<span>${p.name} ${p.isHost ? '(Host)' : ''}</span><span style="color:#22c55e;">Ready</span>`;
+                    listEl.appendChild(item);
+                });
+            });
+
+            // Listen to match start state
+            const matchStateRef = ref(db, `rooms/${gameState.roomCode}/matchStarted`);
+            matchStateRefUnsub = onValue(matchStateRef, (snapshot) => {
+                if(snapshot.val() === true) {
+                    startBattleRoyaleGame();
+                }
+            });
+        }
+
+        async function startMatchHost() {
+            const db = window.db;
+            const { ref, set } = window.dbRefs;
+            await set(ref(db, `rooms/${gameState.roomCode}/matchStarted`), true);
+        }
+
+        function leaveRoom() {
+            if(playersRefUnsub) playersRefUnsub();
+            if(matchStateRefUnsub) matchStateRefUnsub();
+            
+            const db = window.db;
+            const { ref, remove } = window.dbRefs;
+            remove(ref(db, `rooms/${gameState.roomCode}/players/${myPlayerId}`)).catch(() => {});
+            
+            showScreen('screen-main');
+            showToast("Left room.");
+        }
+
+        // THREE.JS 3D BATTLE ROYALE ENGINE
+        let scene, camera, renderer, playerMesh;
+        let keys = { w:false, a:false, s:false, d:false, space:false, shift:false };
+        let mouseLook = { x: 0, y: 0 };
         let isPointerLocked = false;
-        let builtWalls = [];
-        let bullets = [];
 
-        let storm = {
-            radius: 350,
-            center: new THREE.Vector3(0, 0, 0),
-            mesh: null,
-            speed: 0.12
-        };
+        function startBattleRoyaleGame() {
+            document.querySelectorAll('.ui-screen').forEach(s => s.classList.add('hidden'));
+            document.getElementById('hud').classList.remove('hidden');
+            document.getElementById('crosshair').classList.remove('hidden');
+            gameState.inMatch = true;
 
-        let roomSettings = {
-            maxPlayers: 10,
-            theme: 'grassland',
-            stormSpeed: 'normal',
-            initialShield: 50,
-            githubUrl: ''
-        };
+            initThreeJS();
+        }
 
-        /* --- THREE.JS INITIALIZATION --- */
-        function initThreeEngine() {
-            if (scene) return;
+        function initThreeJS() {
+            const container = document.getElementById('canvas-container');
+            container.innerHTML = '';
+
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x87ceeb);
-            scene.fog = new THREE.FogExp2(0x87ceeb, 0.0025);
+            
+            // Set environment theme colors & fog
+            let fogColor = 0x1e293b, skyColor = 0x0f172a, groundColor = 0x15803d;
+            if(gameState.theme === 'desert') { fogColor = 0xd97706; skyColor = 0xfef3c7; groundColor = 0xb45309; }
+            else if(gameState.theme === 'snow') { fogColor = 0x94a3b8; skyColor = 0xf1f5f9; groundColor = 0xe2e8f0; }
+            else if(gameState.theme === 'urban') { fogColor = 0x312e81; skyColor = 0x09090b; groundColor = 0x18181b; }
+
+            scene.background = new THREE.Color(skyColor);
+            scene.fog = new THREE.FogExp2(fogColor, 0.015);
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-            document.body.appendChild(renderer.domElement);
+            container.appendChild(renderer.domElement);
 
+            // Lighting
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
             scene.add(ambientLight);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(50, 200, 50);
+            dirLight.castShadow = true;
+            scene.add(dirLight);
 
-            const sunLight = new THREE.DirectionalLight(0xffffff, 0.9);
-            sunLight.position.set(120, 200, 80);
-            sunLight.castShadow = true;
-            sunLight.shadow.mapSize.width = 2048;
-            sunLight.shadow.mapSize.height = 2048;
-            scene.add(sunLight);
+            // Ground
+            const groundGeo = new THREE.PlaneGeometry(600, 600);
+            const groundMat = new THREE.MeshStandardMaterial({ color: groundColor, roughness: 0.8 });
+            const ground = new THREE.Mesh(groundGeo, groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            // Procedural Environment Props (Trees / Rocks / Buildings)
+            const propGeo = new THREE.BoxGeometry(4, 12, 4);
+            const propMat = new THREE.MeshStandardMaterial({ color: 0x475569 });
+            for(let i=0; i<80; i++) {
+                const prop = new THREE.Mesh(propGeo, propMat);
+                prop.position.set((Math.random() - 0.5) * 500, 6, (Math.random() - 0.5) * 500);
+                prop.castShadow = true;
+                scene.add(prop);
+            }
+
+            // Player Avatar
+            const playerGroup = new THREE.Group();
+            const bodyGeo = new THREE.BoxGeometry(2, 4, 1);
+            const bodyMat = new THREE.MeshStandardMaterial({ color: gameState.skinColor });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = 2;
+            body.castShadow = true;
+            playerGroup.add(body);
+            scene.add(playerGroup);
+            playerMesh = playerGroup;
+
+            // Pointer Lock for FPS/TPS look
+            renderer.domElement.addEventListener('click', () => {
+                renderer.domElement.requestPointerLock();
+            });
+
+            document.addEventListener('pointerlockchange', () => {
+                isPointerLocked = document.pointerLockElement === renderer.domElement;
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if(!isPointerLocked) return;
+                mouseLook.x -= e.movementX * 0.003;
+                mouseLook.y -= e.movementY * 0.003;
+                mouseLook.y = Math.max(-Math.PI / 2.5, Math.min(Math.PI / 2.5, mouseLook.y));
+            });
+
+            window.addEventListener('keydown', (e) => {
+                if(e.key === 'w' || e.key === 'W') keys.w = true;
+                if(e.key === 'a' || e.key === 'A') keys.a = true;
+                if(e.key === 's' || e.key === 'S') keys.s = true;
+                if(e.key === 'd' || e.key === 'D') keys.d = true;
+                if(e.key === ' ') keys.space = true;
+                if(e.key === 'Shift') keys.shift = true;
+            });
+
+            window.addEventListener('keyup', (e) => {
+                if(e.key === 'w' || e.key === 'W') keys.w = false;
+                if(e.key === 'a' || e.key === 'A') keys.a = false;
+                if(e.key === 's' || e.key === 'S') keys.s = false;
+                if(e.key === 'd' || e.key === 'D') keys.d = false;
+                if(e.key === ' ') keys.space = false;
+                if(e.key === 'Shift') keys.shift = false;
+            });
 
             window.addEventListener('resize', () => {
                 camera.aspect = window.innerWidth / window.innerHeight;
                 camera.updateProjectionMatrix();
                 renderer.setSize(window.innerWidth, window.innerHeight);
             });
+
+            animateGame();
         }
 
-        /* --- BUILD ENVIRONMENT SCENE --- */
-        function setupGameScene() {
-            initThreeEngine();
+        let playerPos = { x: 0, z: 0, y: 0 };
+        function animateGame() {
+            if(!gameState.inMatch) return;
+            requestAnimationFrame(animateGame);
 
-            // Reset Scene
-            while(scene.children.length > 0) {
-                scene.remove(scene.children[0]);
+            // Movement logic
+            let speed = keys.shift ? 0.4 : 0.22;
+            let moveX = 0, moveZ = 0;
+            if(keys.w) moveZ -= 1;
+            if(keys.s) moveZ += 1;
+            if(keys.a) moveX -= 1;
+            if(keys.d) moveX += 1;
+
+            if(moveX !== 0 || moveZ !== 0) {
+                const angle = mouseLook.x;
+                playerPos.x += (moveX * Math.cos(angle) - moveZ * Math.sin(angle)) * speed;
+                playerPos.z += (moveX * Math.sin(angle) + moveZ * Math.cos(angle)) * speed;
             }
 
-            const theme = THEMES[roomSettings.theme] || THEMES.grassland;
-            scene.background.setHex(theme.fog);
-            scene.fog.color.setHex(theme.fog);
+            playerMesh.position.set(playerPos.x, playerPos.y, playerPos.z);
+            playerMesh.rotation.y = mouseLook.x;
 
-            // Re-add lights
-            const ambient = new THREE.AmbientLight(0xffffff, 0.65);
-            scene.add(ambient);
-            const sun = new THREE.DirectionalLight(0xffffff, 0.9);
-            sun.position.set(100, 200, 100);
-            sun.castShadow = true;
-            scene.add(sun);
+            // Camera follow
+            camera.position.x = playerPos.x - Math.sin(mouseLook.x) * 8;
+            camera.position.y = playerPos.y + 5 + Math.sin(mouseLook.y) * 5;
+            camera.position.z = playerPos.z - Math.cos(mouseLook.x) * 8;
+            camera.lookAt(playerPos.x, playerPos.y + 2, playerPos.z);
 
-            // Ground Terrain
-            const groundGeo = new THREE.PlaneGeometry(800, 800, 32, 32);
-            const groundMat = new THREE.MeshStandardMaterial({ color: theme.ground, roughness: 0.9 });
-            const ground = new THREE.Mesh(groundGeo, groundMat);
-            ground.rotation.x = -Math.PI / 2;
-            ground.receiveShadow = true;
-            scene.add(ground);
-
-            // Environment Objects: Trees & Rocks
-            for (let i = 0; i < 70; i++) {
-                const rx = (Math.random() - 0.5) * 600;
-                const rz = (Math.random() - 0.5) * 600;
-
-                // Trunk/Rock
-                if (i % 2 === 0) {
-                    // Tree
-                    const trunkGeo = new THREE.CylinderGeometry(0.5, 0.7, 5);
-                    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x543d2b });
-                    const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-                    trunk.position.set(rx, 2.5, rz);
-                    trunk.castShadow = true;
-                    scene.add(trunk);
-
-                    const leavesGeo = new THREE.ConeGeometry(3, 7, 8);
-                    const leavesMat = new THREE.MeshStandardMaterial({ color: theme.tree });
-                    const leaves = new THREE.Mesh(leavesGeo, leavesMat);
-                    leaves.position.set(rx, 7.5, rz);
-                    leaves.castShadow = true;
-                    scene.add(leaves);
-                } else {
-                    // Rock
-                    const rockGeo = new THREE.DodecahedronGeometry(Math.random() * 1.5 + 1);
-                    const rockMat = new THREE.MeshStandardMaterial({ color: theme.rock, roughness: 0.8 });
-                    const rock = new THREE.Mesh(rockGeo, rockMat);
-                    rock.position.set(rx, 1, rz);
-                    rock.castShadow = true;
-                    scene.add(rock);
-                }
-            }
-
-            // Local Player Capsule Mesh
-            localPlayerMesh = createAvatarMesh(0x38bdf8, localPlayer.displayName);
-            localPlayer.position.set((Math.random() - 0.5) * 50, 2, (Math.random() - 0.5) * 50);
-            localPlayerMesh.position.copy(localPlayer.position);
-            scene.add(localPlayerMesh);
-
-            // Check GitHub GLTF Link
-            if (roomSettings.githubUrl) {
-                gltfLoader.load(roomSettings.githubUrl, (gltf) => {
-                    scene.remove(localPlayerMesh);
-                    const customMesh = gltf.scene;
-                    customMesh.scale.set(1.5, 1.5, 1.5);
-                    localPlayerMesh = customMesh;
-                    scene.add(localPlayerMesh);
-                    logNetStatus("Custom GitHub 3D Avatar Loaded!", "success");
-                }, undefined, (err) => {
-                    logNetStatus("GitHub Model load failed, using procedural avatar", "error");
-                });
-            }
-
-            // 3D Storm Barrier Cylinder
-            storm.radius = 350;
-            storm.speed = roomSettings.stormSpeed === 'slow' ? 0.05 : (roomSettings.stormSpeed === 'fast' ? 0.22 : 0.12);
-            const stormGeo = new THREE.CylinderGeometry(storm.radius, storm.radius, 150, 64, 1, true);
-            const stormMat = new THREE.MeshBasicMaterial({ color: 0xa855f7, transparent: true, opacity: 0.3, side: THREE.DoubleSide });
-            storm.mesh = new THREE.Mesh(stormGeo, stormMat);
-            storm.mesh.position.set(0, 75, 0);
-            scene.add(storm.mesh);
-
-            builtWalls = [];
-            bullets = [];
-            eliminations = 0;
-            localPlayer.health = 100;
-            localPlayer.shield = parseInt(roomSettings.initialShield) || 50;
-            localPlayer.wood = 100;
-
-            updateHUDInventory();
-            updateHUDWood();
+            renderer.render(scene, camera);
         }
-
-        function createAvatarMesh(colorHex, name) {
-            const group = new THREE.Group();
-            
-            // Body Cylinder
-            const bodyGeo = new THREE.CylinderGeometry(0.7, 0.7, 2.4, 16);
-            const bodyMat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.3 });
-            const body = new THREE.Mesh(bodyGeo, bodyMat);
-            body.position.y = 1.2;
-            body.castShadow = true;
-            group.add(body);
-
-            // Head Sphere
-            const headGeo = new THREE.SphereGeometry(0.5, 16, 16);
-            const headMat = new THREE.MeshStandardMaterial({ color: 0xfde047 });
-            const head = new THREE.Mesh(headGeo, headMat);
-            head.position.y = 2.6;
-            head.castShadow = true;
-            group.add(head);
-
-            return group;
-        }
-
-        /* --- 3D GRID BUILDING MECHANIC --- */
-        function buildWoodenWall() {
-            if (gameState !== 'PLAYING' || localPlayer.wood < 10) return;
-            localPlayer.wood -= 10;
-            updateHUDWood();
-
-            const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), localPlayer.rotationY);
-            const targetPos = localPlayer.position.clone().add(forward.multiplyScalar(4.5));
-
-            // Grid snapping
-            const snapX = Math.round(targetPos.x / 4) * 4;
-            const snapZ = Math.round(targetPos.z / 4) * 4;
-
-            const wallGeo = new THREE.BoxGeometry(4.5, 3.5, 0.4);
-            const wallMat = new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.8 });
-            const wall = new THREE.Mesh(wallGeo, wallMat);
-            wall.position.set(snapX, 1.75, snapZ);
-            wall.rotation.y = Math.round(localPlayer.rotationY / (Math.PI / 2)) * (Math.PI / 2);
-            wall.castShadow = true;
-            wall.receiveShadow = true;
-            scene.add(wall);
-
-            const wallData = { x: snapX, y: 1.75, z: snapZ, rotY: wall.rotation.y };
-            builtWalls.push(wall);
-
-            // Network Sync Wall
-            broadcastNetworkEvent({ type: 'BUILD_WALL', wall: wallData });
-        }
-
-        function spawnRemoteWall(wallData) {
-            const wallGeo = new THREE.BoxGeometry(4.5, 3.5, 0.4);
-            const wallMat = new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.8 });
-            const wall = new THREE.Mesh(wallGeo, wallMat);
-            wall.position.set(wallData.x, wallData.y, wallData.z);
-            wall.rotation.y = wallData.rotY;
-            wall.castShadow = true;
-            wall.receiveShadow = true;
-            scene.add(wall);
-            builtWalls.push(wall);
-        }
-
-        /* --- WEAPON SHOOTING & CONSUMABLES --- */
-        function useSelectedSlot() {
-            if (gameState !== 'PLAYING') return;
-            const item = localPlayer.inventory[localPlayer.selectedSlot];
-            if (!item) return;
-
-            if (item.isConsumable) {
-                if (item.heal) {
-                    localPlayer.health = Math.min(100, localPlayer.health + item.heal);
-                }
-                if (item.shield) {
-                    localPlayer.shield = Math.min(100, localPlayer.shield + item.shield);
-                }
-                logNetStatus(`Used ${item.name}!`, "success");
-                return;
-            }
-
-            const now = performance.now();
-            if (now - localPlayer.lastShot < item.fireRate) return;
-            localPlayer.lastShot = now;
-
-            // Spawn Projectile
-            const dir = new THREE.Vector3(0, 0, -1);
-            dir.applyAxisAngle(new THREE.Vector3(1, 0, 0), localPlayer.rotationX);
-            dir.applyAxisAngle(new THREE.Vector3(0, 1, 0), localPlayer.rotationY);
-
-            const bulletGeo = new THREE.SphereGeometry(0.2, 8, 8);
-            const bulletMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
-            const bullet = new THREE.Mesh(bulletGeo, bulletMat);
-            bullet.position.copy(localPlayer.position).add(new THREE.Vector3(0, 1.8, 0));
-            scene.add(bullet);
-
-            bullets.push({
-                mesh: bullet,
-                direction: dir,
-                speed: 4,
-                damage: item.damage,
-                distance: 0,
-                ownerId: myPeerId
-            });
-
-            // Network Sync Shoot Event
-            broadcastNetworkEvent({
-                type: 'SHOOT',
-                origin: { x: bullet.position.x, y: bullet.position.y, z: bullet.position.z },
-                dir: { x: dir.x, y: dir.y, z: dir.z },
-                damage: item.damage
-            });
-        }
-
-        /* --- GAME LOOP & STATE UPDATES --- */
-        function updateEngine() {
-            const delta = clock.getDelta();
-
-            if (gameState === 'PLAYING') {
-                // Movement
-                const speed = keys['ShiftLeft'] ? 16 : 10;
-                const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), localPlayer.rotationY);
-                const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), localPlayer.rotationY);
-
-                const moveDir = new THREE.Vector3();
-                if (keys['KeyW']) moveDir.add(forward);
-                if (keys['KeyS']) moveDir.sub(forward);
-                if (keys['KeyD']) moveDir.add(right);
-                if (keys['KeyA']) moveDir.sub(right);
-
-                if (moveDir.lengthSq() > 0) {
-                    moveDir.normalize();
-                    localPlayer.position.addScaledVector(moveDir, speed * delta);
-                }
-
-                // Jump & Gravity
-                if (keys['Space'] && localPlayer.isGrounded) {
-                    localPlayer.velocity.y = 12;
-                    localPlayer.isGrounded = false;
-                }
-                localPlayer.velocity.y -= 32 * delta;
-                localPlayer.position.y += localPlayer.velocity.y * delta;
-                if (localPlayer.position.y <= 0) {
-                    localPlayer.position.y = 0;
-                    localPlayer.velocity.y = 0;
-                    localPlayer.isGrounded = true;
-                }
-
-                if (localPlayerMesh) {
-                    localPlayerMesh.position.copy(localPlayer.position);
-                    localPlayerMesh.rotation.y = localPlayer.rotationY;
-                }
-
-                // TPS Camera Position
-                const camOffset = new THREE.Vector3(0, 3.2, 7);
-                camOffset.applyAxisAngle(new THREE.Vector3(1, 0, 0), localPlayer.rotationX);
-                camOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), localPlayer.rotationY);
-                camera.position.copy(localPlayer.position).add(camOffset);
-                camera.lookAt(localPlayer.position.clone().add(new THREE.Vector3(0, 1.8, 0)));
-
-                // Storm Shrink & Damage
-                if (storm.radius > 20) {
-                    storm.radius -= storm.speed * delta * 10;
-                    storm.mesh.scale.set(storm.radius / 350, 1, storm.radius / 350);
-                }
-                const distToCenter = Math.hypot(localPlayer.position.x, localPlayer.position.z);
-                if (distToCenter > storm.radius) {
-                    applyDamage(0.2);
-                }
-
-                // Update Bullets & Hit Detection
-                for (let i = bullets.length - 1; i >= 0; i--) {
-                    const b = bullets[i];
-                    b.mesh.position.addScaledVector(b.direction, b.speed);
-                    b.distance += b.speed;
-
-                    // Check remote player hits
-                    if (b.ownerId === myPeerId) {
-                        for (let pid in remotePlayers) {
-                            const p = remotePlayers[pid];
-                            if (p.mesh && b.mesh.position.distanceTo(p.mesh.position) < 1.8) {
-                                broadcastNetworkEvent({ type: 'HIT_PLAYER', targetId: pid, damage: b.damage });
-                                scene.remove(b.mesh);
-                                bullets.splice(i, 1);
-                                break;
-                            }
-                        }
-                    }
-
-                    if (b.distance > 250) {
-                        scene.remove(b.mesh);
-                        bullets.splice(i, 1);
-                    }
-                }
-
-                // Sync Player Position over Network
-                syncMyStateNetwork();
-
-                // HUD updates
-                document.getElementById('hud-health-bar').style.width = `${localPlayer.health}%`;
-                document.getElementById('hud-health-num').innerText = `${Math.ceil(localPlayer.health)} / 100`;
-                document.getElementById('hud-shield-bar').style.width = `${localPlayer.shield}%`;
-                document.getElementById('hud-shield-num').innerText = `${Math.ceil(localPlayer.shield)} / 100`;
-                document.getElementById('hud-alive').innerText = Object.keys(remotePlayers).length + 1;
-                document.getElementById('hud-elims').innerText = eliminations;
-            }
-
-            if (renderer && scene && camera) {
-                renderer.render(scene, camera);
-            }
-            requestAnimationFrame(updateEngine);
-        }
-
-        function applyDamage(amount) {
-            if (localPlayer.shield > 0) {
-                localPlayer.shield -= amount;
-                if (localPlayer.shield < 0) {
-                    localPlayer.health += localPlayer.shield;
-                    localPlayer.shield = 0;
-                }
-            } else {
-                localPlayer.health -= amount;
-            }
-
-            if (localPlayer.health <= 0 && gameState === 'PLAYING') {
-                triggerGameOver(false);
-            }
-        }
-
-        function triggerGameOver(isVictory) {
-            gameState = 'GAMEOVER';
-            document.exitPointerLock();
-            document.getElementById('end-banner').innerText = isVictory ? "VICTORY ROYALE!" : "ELIMINATED";
-            document.getElementById('end-elims').innerText = eliminations;
-            document.getElementById('end-rank').innerText = isVictory ? "#1" : `#${Object.keys(remotePlayers).length + 1}`;
-            document.getElementById('end-screen').classList.remove('hidden');
-        }
-
-        function updateHUDInventory() {
-            const container = document.getElementById('hud-inventory');
-            container.innerHTML = '';
-            for (let i = 0; i < 5; i++) {
-                const item = localPlayer.inventory[i];
-                const isSelected = localPlayer.selectedSlot === i;
-                const slot = document.createElement('div');
-                slot.onclick = () => { localPlayer.selectedSlot = i; updateHUDInventory(); };
-                slot.className = `w-14 h-14 rounded-xl flex flex-col justify-center items-center border-2 transition-all cursor-pointer ${isSelected ? 'border-yellow-400 bg-slate-800 scale-105' : 'border-slate-700 bg-slate-900'}`;
-                slot.innerHTML = `
-                    <i class="fa-solid ${item.icon} text-lg" style="color: ${item.color}"></i>
-                    <span class="text-[9px] font-bold text-slate-300 mt-1">${item.name.split(' ')[0]}</span>
-                `;
-                container.appendChild(slot);
-            }
-        }
-
-        function updateHUDWood() {
-            document.getElementById('hud-wood').innerText = localPlayer.wood;
-        }
-
-        /* --- INPUT EVENT LISTENERS --- */
-        window.addEventListener('keydown', (e) => {
-            keys[e.code] = true;
-            if (['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5'].includes(e.code)) {
-                localPlayer.selectedSlot = parseInt(e.code.replace('Digit', '')) - 1;
-                updateHUDInventory();
-            }
-            if (e.code === 'KeyQ') buildWoodenWall();
-        });
-
-        window.addEventListener('keyup', (e) => keys[e.code] = false);
-
-        window.addEventListener('mousedown', (e) => {
-            if (gameState !== 'PLAYING') return;
-            if (e.button === 0) useSelectedSlot();
-            if (e.button === 2) buildWoodenWall();
-        });
-
-        document.addEventListener('mousemove', (e) => {
-            if (!isPointerLocked || gameState !== 'PLAYING') return;
-            const sensitivity = 0.0022;
-            localPlayer.rotationY -= e.movementX * sensitivity;
-            localPlayer.rotationX -= e.movementY * sensitivity;
-            localPlayer.rotationX = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, localPlayer.rotationX));
-        });
-
-        document.addEventListener('pointerlockchange', () => {
-            isPointerLocked = document.pointerLockElement === renderer?.domElement;
-        });
-
-        /* --- FIREBASE & WEBRTC NETWORKING LOGIC --- */
-        function setPublicSize(size) {
-            publicLobbySize = size;
-            document.querySelectorAll('.pub-size-btn').forEach(btn => {
-                btn.className = "pub-size-btn py-2 rounded-lg font-bold text-xs bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700";
-            });
-            document.getElementById(`pub-btn-${size}`).className = "pub-size-btn py-2 rounded-lg font-bold text-xs bg-cyan-600 text-white border border-cyan-400";
-        }
-
-        function openCustomModal() { document.getElementById('custom-modal').classList.remove('hidden'); }
-        function closeCustomModal() { document.getElementById('custom-modal').classList.add('hidden'); }
-
-        function joinPublicLobby() {
-            const roomCode = 'ROOM_PUB_' + publicLobbySize;
-            localPlayer.displayName = document.getElementById('player-display-name').value || 'VictoryPlayer';
-            joinOrCreateRoom(roomCode, { maxPlayers: publicLobbySize, theme: 'grassland', stormSpeed: 'normal' });
-        }
-
-        function joinCustomByCode() {
-            const code = document.getElementById('custom-room-code-input').value.trim().toUpperCase();
-            if (!code) return alert("Please enter a valid Room Code");
-            localPlayer.displayName = document.getElementById('player-display-name').value || 'VictoryPlayer';
-            joinOrCreateRoom(code);
-        }
-
-        function createCustomLobbyAction() {
-            const code = 'FORT-' + Math.floor(Math.random() * 8999 + 1000);
-            roomSettings.maxPlayers = parseInt(document.getElementById('cust-max-players').value) || 10;
-            roomSettings.theme = document.getElementById('cust-theme').value;
-            roomSettings.stormSpeed = document.getElementById('cust-storm').value;
-            roomSettings.initialShield = document.getElementById('cust-shield').value;
-            roomSettings.githubUrl = document.getElementById('cust-github-url').value.trim();
-            localPlayer.displayName = document.getElementById('player-display-name').value || 'VictoryPlayer';
-
-            closeCustomModal();
-            joinOrCreateRoom(code, roomSettings, true);
-        }
-
-        function joinOrCreateRoom(roomId, settings = null, forceHost = false) {
-            if (!db) {
-                logNetStatus("Firebase DB unavailable, starting single-player mode", "error");
-                launchGameScene();
-                return;
-            }
-
-            currentRoomId = roomId;
-            roomRef = db.ref('fortnite_rooms/' + roomId);
-
-            logNetStatus(`Connecting to Room ${roomId}...`, "info");
-
-            roomRef.child('metadata').once('value', (snapshot) => {
-                const data = snapshot.val();
-                if (!data || forceHost) {
-                    // Become Host
-                    isHost = true;
-                    roomSettings = settings || roomSettings;
-                    roomRef.child('metadata').set({
-                        hostId: myPeerId,
-                        hostName: localPlayer.displayName,
-                        settings: roomSettings,
-                        state: 'WAITING'
-                    });
-                } else {
-                    isHost = false;
-                    if (data.settings) roomSettings = data.settings;
-                }
-
-                // Register Myself in Players List
-                roomRef.child('players/' + myPeerId).set({
-                    displayName: localPlayer.displayName,
-                    joinedAt: Date.now()
-                });
-                roomRef.child('players/' + myPeerId).onDisconnect().remove();
-
-                // Open Waiting Room UI
-                openWaitingRoomUI();
-
-                // Listen for Room State & Players
-                listenRoomUpdates();
-
-                // Initiate WebRTC / DB Sync
-                initSignaling();
-            });
-        }
-
-        function openWaitingRoomUI() {
-            document.getElementById('main-menu').classList.add('hidden');
-            document.getElementById('waiting-room').classList.remove('hidden');
-            document.getElementById('wait-room-code').innerText = currentRoomId;
-            document.getElementById('wait-theme-desc').innerText = `${roomSettings.theme.toUpperCase()} • ${roomSettings.stormSpeed.toUpperCase()}`;
-            
-            if (isHost) {
-                document.getElementById('btn-start-game').classList.remove('hidden');
-            } else {
-                document.getElementById('btn-start-game').classList.add('hidden');
-            }
-        }
-
-        function listenRoomUpdates() {
-            // Listen for players joining/leaving
-            roomRef.child('players').on('value', (snapshot) => {
-                const players = snapshot.val() || {};
-                const playerListEl = document.getElementById('wait-player-list');
-                playerListEl.innerHTML = '';
-                const pKeys = Object.keys(players);
-
-                document.getElementById('wait-player-count').innerText = pKeys.length;
-                document.getElementById('wait-max-count').innerText = roomSettings.maxPlayers;
-
-                pKeys.forEach((pid) => {
-                    const p = players[pid];
-                    if (pid === myPeerId) return;
-                    createRemotePlayerMesh(pid, p.displayName || 'Player');
-
-                    const item = document.createElement('div');
-                    item.className = 'flex items-center justify-between bg-slate-900/80 px-4 py-2 rounded-xl border border-slate-800 text-xs';
-                    item.innerHTML = `
-                        <div class="flex items-center gap-2">
-                            <i class="fa-solid fa-user text-cyan-400"></i>
-                            <span class="font-bold text-white">${p.displayName || pid}</span>
-                        </div>
-                        <span class="text-emerald-400 font-semibold"><i class="fa-solid fa-check mr-1"></i> READY</span>
-                    `;
-                    playerListEl.appendChild(item);
-                });
-            });
-
-            // Listen for Host to Start Game
-            roomRef.child('metadata/state').on('value', (snapshot) => {
-                if (snapshot.val() === 'PLAYING' && gameState === 'MENU') {
-                    launchGameScene();
-                }
-            });
-
-            // Listen for Game Events (Shoot, Build, Hit) over Realtime Database Fallback
-            roomRef.child('events').on('child_added', (snapshot) => {
-                const event = snapshot.val();
-                if (!event || event.sender === myPeerId) return;
-                handleNetworkMessage(event);
-            });
-
-            // Listen for State Sync of Remote Players
-            roomRef.child('states').on('value', (snapshot) => {
-                const states = snapshot.val() || {};
-                for (let pid in states) {
-                    if (pid === myPeerId) continue;
-                    const st = states[pid];
-                    if (remotePlayers[pid] && remotePlayers[pid].mesh) {
-                        remotePlayers[pid].mesh.position.set(st.x, st.y, st.z);
-                        remotePlayers[pid].mesh.rotation.y = st.rotY;
-                    }
-                }
-            });
-        }
-
-        function copyRoomCode() {
-            navigator.clipboard.writeText(currentRoomId);
-            logNetStatus("Room Code Copied to Clipboard!", "success");
-        }
-
-        function hostStartMatch() {
-            if (!isHost || !roomRef) return;
-            roomRef.child('metadata/state').set('PLAYING');
-            launchGameScene();
-        }
-
-        function leaveLobby() {
-            if (roomRef) {
-                roomRef.child('players/' + myPeerId).remove();
-            }
-            location.reload();
-        }
-
-        function launchGameScene() {
-            document.getElementById('waiting-room').classList.add('hidden');
-            document.getElementById('game-hud').classList.remove('hidden');
-
-            setupGameScene();
-            gameState = 'PLAYING';
-            renderer.domElement.requestPointerLock();
-        }
-
-        /* --- WEBRTC SIGNALING & DIRECT DATACHANNELS --- */
-        function initSignaling() {
-            // WebRTC Signaling over Firebase Database node 'signals'
-            const signalsRef = roomRef.child('signals/' + myPeerId);
-            signalsRef.on('child_added', async (snapshot) => {
-                const signal = snapshot.val();
-                if (!signal || signal.from === myPeerId) return;
-
-                const fromId = signal.from;
-                let pc = peerConnections[fromId];
-
-                if (!pc) pc = createPeerConnection(fromId);
-
-                if (signal.type === 'offer') {
-                    await pc.setRemoteDescription(new RTCSessionDescription(signal.offer));
-                    const answer = await pc.createAnswer();
-                    await pc.setLocalDescription(answer);
-                    roomRef.child('signals/' + fromId).push({
-                        from: myPeerId,
-                        type: 'answer',
-                        answer: answer
-                    });
-                } else if (signal.type === 'answer') {
-                    await pc.setRemoteDescription(new RTCSessionDescription(signal.answer));
-                } else if (signal.type === 'candidate') {
-                    await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
-                }
-            });
-        }
-
-        function createPeerConnection(targetPeerId) {
-            const pc = new RTCPeerConnection(rtcConfig);
-            peerConnections[targetPeerId] = pc;
-
-            pc.onicecandidate = (event) => {
-                if (event.candidate && roomRef) {
-                    roomRef.child('signals/' + targetPeerId).push({
-                        from: myPeerId,
-                        type: 'candidate',
-                        candidate: event.candidate
-                    });
-                }
-            };
-
-            pc.ondatachannel = (event) => {
-                setupDataChannel(targetPeerId, event.channel);
-            };
-
-            // If we are host or initiating connection, create channel
-            const channel = pc.createDataChannel('fortnite_channel');
-            setupDataChannel(targetPeerId, channel);
-
-            return pc;
-        }
-
-        function setupDataChannel(targetPeerId, channel) {
-            dataChannels[targetPeerId] = channel;
-            channel.onopen = () => logNetStatus(`Direct WebRTC Connected to ${targetPeerId}`, "success");
-            channel.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    handleNetworkMessage(data);
-                } catch(e){}
-            };
-        }
-
-        function broadcastNetworkEvent(data) {
-            data.sender = myPeerId;
-            const str = JSON.stringify(data);
-
-            // Send via WebRTC Data Channels first
-            let sentRTC = false;
-            for (let pid in dataChannels) {
-                if (dataChannels[pid].readyState === 'open') {
-                    dataChannels[pid].send(str);
-                    sentRTC = true;
-                }
-            }
-
-            // Fallback: Push event to Firebase Realtime Database
-            if (!sentRTC && roomRef) {
-                roomRef.child('events').push(data);
-            }
-        }
-
-        function syncMyStateNetwork() {
-            if (!roomRef || gameState !== 'PLAYING') return;
-
-            const stateData = {
-                x: localPlayer.position.x,
-                y: localPlayer.position.y,
-                z: localPlayer.position.z,
-                rotY: localPlayer.rotationY
-            };
-
-            // Direct DataChannel broadcast
-            let sentP2P = false;
-            for (let pid in dataChannels) {
-                if (dataChannels[pid].readyState === 'open') {
-                    dataChannels[pid].send(JSON.stringify({ type: 'SYNC_STATE', state: stateData, sender: myPeerId }));
-                    sentP2P = true;
-                }
-            }
-
-            // Realtime DB fallback throttle sync
-            if (!sentP2P && Math.random() < 0.3) {
-                roomRef.child('states/' + myPeerId).set(stateData);
-            }
-        }
-
-        function createRemotePlayerMesh(pid, name) {
-            if (remotePlayers[pid]) return;
-            const mesh = createAvatarMesh(0xf43f5e, name);
-            scene.add(mesh);
-            remotePlayers[pid] = { mesh: mesh, health: 100, shield: 50 };
-        }
-
-        function handleNetworkMessage(data) {
-            if (data.type === 'SYNC_STATE') {
-                if (!remotePlayers[data.sender]) createRemotePlayerMesh(data.sender, 'Player');
-                const mesh = remotePlayers[data.sender].mesh;
-                if (mesh) {
-                    mesh.position.set(data.state.x, data.state.y, data.state.z);
-                    mesh.rotation.y = data.state.rotY;
-                }
-            } else if (data.type === 'BUILD_WALL') {
-                spawnRemoteWall(data.wall);
-            } else if (data.type === 'SHOOT') {
-                // Render remote tracer bullet
-                const bulletGeo = new THREE.SphereGeometry(0.2, 8, 8);
-                const bulletMat = new THREE.MeshBasicMaterial({ color: 0xfca5a5 });
-                const bullet = new THREE.Mesh(bulletGeo, bulletMat);
-                bullet.position.set(data.origin.x, data.origin.y, data.origin.z);
-                scene.add(bullet);
-                bullets.push({
-                    mesh: bullet,
-                    direction: new THREE.Vector3(data.dir.x, data.dir.y, data.dir.z),
-                    speed: 4,
-                    damage: data.damage,
-                    distance: 0,
-                    ownerId: data.sender
-                });
-            } else if (data.type === 'HIT_PLAYER') {
-                if (data.targetId === myPeerId) {
-                    applyDamage(data.damage);
-                }
-            }
-        }
-
-        function returnToMenu() {
-            location.reload();
-        }
-
-        /* --- LAUNCH ENGINE LOOP ON LOAD --- */
-        window.onload = () => {
-            initThreeEngine();
-            requestAnimationFrame(updateEngine);
-        };
     </script>
 </body>
 </html>
