@@ -1,381 +1,328 @@
+<!-- ... anderes existing code ... -->
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Fortnite Battle Royale - P2P Multiplayer</title>
-    <!-- Tailwind CSS -->
+    <title>MUSICSER - Cloud Music Streaming</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#0f172a',
+                        darkCard: '#1e293b',
+                        accent: '#8b5cf6',
+                        accentHover: '#7c3aed'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
-    
-    <!-- Three.js & Loaders -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-
-    <!-- Firebase v9 Compat (App, Database) -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #0b0f19;
-            color: #ffffff;
-            overflow: hidden;
-            user-select: none;
-        }
-        .font-fortnite {
-            font-family: 'Bungee', cursive;
-            letter-spacing: 0.05em;
-        }
-        .fortnite-btn {
-            background: linear-gradient(135deg, #facc15 0%, #eab308 100%);
-            color: #000;
-            text-transform: uppercase;
-            font-weight: 900;
-            clip-path: polygon(5% 0, 100% 0, 95% 100%, 0 100%);
-            transition: all 0.15s ease-in-out;
-            box-shadow: 0 4px 15px rgba(234, 179, 8, 0.4);
-        }
-        .fortnite-btn:hover {
-            transform: scale(1.03) translateY(-2px);
-            background: linear-gradient(135deg, #fef08a 0%, #facc15 100%);
-            box-shadow: 0 6px 20px rgba(250, 204, 21, 0.6);
-        }
-        .fortnite-btn-blue {
-            background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
-            color: #fff;
-            text-transform: uppercase;
-            font-weight: 900;
-            clip-path: polygon(5% 0, 100% 0, 95% 100%, 0 100%);
-            transition: all 0.15s ease-in-out;
-            box-shadow: 0 4px 15px rgba(2, 132, 199, 0.4);
-        }
-        .fortnite-btn-blue:hover {
-            transform: scale(1.03) translateY(-2px);
-            background: linear-gradient(135deg, #7dd3fc 0%, #0369a1 100%);
-            box-shadow: 0 6px 20px rgba(56, 189, 248, 0.6);
-        }
-        .glass-panel {
-            background: rgba(15, 23, 42, 0.88);
-            backdrop-filter: blur(14px);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-        }
-        #crosshair {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 12px;
-            height: 12px;
-            transform: translate(-50%, -50%);
-            pointer-events: none;
-            z-index: 30;
-        }
-        #crosshair::before, #crosshair::after {
-            content: '';
-            position: absolute;
-            background: rgba(255, 255, 255, 0.9);
-            box-shadow: 0 0 4px rgba(0,0,0,0.8);
-        }
-        #crosshair::before { top: 5px; left: -10px; width: 32px; height: 2px; }
-        #crosshair::after { top: -10px; left: 5px; width: 2px; height: 32px; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
     </style>
 </head>
-<body class="w-screen h-screen relative flex flex-col justify-center items-center">
+<body class="bg-darkBg text-slate-100 min-h-screen flex flex-col justify-between selection:bg-accent selection:text-white">
 
-    <!-- NETWORKING DEBUG / LOG OVERLAY -->
-    <div id="net-log" class="absolute top-4 left-4 z-50 flex flex-col gap-1 max-w-md pointer-events-none"></div>
-
-    <!-- MAIN MENU OVERLAY -->
-    <div id="main-menu" class="absolute inset-0 z-40 flex flex-col items-center justify-center bg-slate-950 bg-opacity-95 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 via-purple-950 to-slate-950 p-4">
-        
-        <div class="text-center mb-6 transform -rotate-1">
-            <div class="inline-block px-4 py-1 bg-yellow-400 text-slate-950 font-fortnite text-xs md:text-sm rounded mb-2 tracking-widest shadow-lg">3D MULTIPLAYER • REALTIME SIGNALING • WEBRTC</div>
-            <h1 class="text-5xl md:text-7xl font-fortnite text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 drop-shadow-[0_5px_5px_rgba(0,0,0,0.8)]">
-                FORTNITE 3D P2P
-            </h1>
-            <p class="text-cyan-400 text-xs md:text-sm font-semibold mt-1 tracking-wider">REAL PLAYERS • REALTIME DATABASE SYNC • 3D BUILDING</p>
-        </div>
-
-        <!-- PLAYER NAME SELECTION -->
-        <div class="w-full max-w-md mb-6 glass-panel p-4 rounded-2xl border border-yellow-500/30 flex items-center gap-3">
-            <i class="fa-solid fa-user-astronaut text-yellow-400 text-2xl"></i>
-            <div class="flex-1">
-                <label class="block text-[10px] font-bold text-slate-400 uppercase">Your Player Display Name</label>
-                <input type="text" id="player-display-name" value="VictoryPlayer" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm font-bold text-yellow-400 focus:outline-none focus:border-yellow-400">
+    <!-- Top Navigation -->
+    <header class="border-b border-slate-800 bg-darkCard/50 backdrop-blur sticky top-0 z-40 px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <div class="bg-gradient-to-tr from-accent to-pink-500 p-2.5 rounded-xl shadow-lg shadow-accent/20">
+                <i class="fa-solid fa-headphones text-white text-xl"></i>
             </div>
-        </div>
-
-        <div class="w-full max-w-5xl px-4 flex flex-col md:flex-row gap-6 justify-center items-stretch overflow-y-auto max-h-[65vh] p-2">
-            
-            <!-- OPTION A: PUBLIC MATCHMAKING -->
-            <div class="flex-1 glass-panel p-6 rounded-3xl flex flex-col justify-between border-2 border-cyan-500/30 hover:border-cyan-400 transition-all duration-300">
-                <div>
-                    <div class="flex items-center justify-between mb-4">
-                        <span class="px-3 py-1 bg-cyan-500/20 text-cyan-300 text-xs font-bold rounded-full uppercase border border-cyan-500/40">Matchmaking</span>
-                        <i class="fa-solid fa-globe text-cyan-400 text-2xl"></i>
-                    </div>
-                    <h2 class="text-2xl font-fortnite text-white mb-2">PUBLIC LOBBY</h2>
-                    <p class="text-slate-400 text-xs md:text-sm mb-6">Instantly join or auto-host an open public room for standard Battle Royale.</p>
-                    
-                    <div class="space-y-3 mb-6 bg-slate-900/60 p-4 rounded-xl border border-slate-800">
-                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Select Match Capacity</label>
-                        <div class="grid grid-cols-3 gap-2">
-                            <button onclick="setPublicSize(10)" id="pub-btn-10" class="pub-size-btn py-2 rounded-lg font-bold text-xs bg-cyan-600 text-white border border-cyan-400">10 Players</button>
-                            <button onclick="setPublicSize(20)" id="pub-btn-20" class="pub-size-btn py-2 rounded-lg font-bold text-xs bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700">20 Players</button>
-                            <button onclick="setPublicSize(50)" id="pub-btn-50" class="pub-size-btn py-2 rounded-lg font-bold text-xs bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700">50 Players</button>
-                        </div>
-                    </div>
-                </div>
-
-                <button onclick="joinPublicLobby()" class="fortnite-btn py-4 text-lg w-full text-center tracking-wider">
-                    <i class="fa-solid fa-play mr-2"></i> FIND PUBLIC MATCH
-                </button>
-            </div>
-
-            <!-- OPTION B: CUSTOM LOBBY -->
-            <div class="flex-1 glass-panel p-6 rounded-3xl flex flex-col justify-between border-2 border-purple-500/30 hover:border-purple-400 transition-all duration-300">
-                <div>
-                    <div class="flex items-center justify-between mb-4">
-                        <span class="px-3 py-1 bg-purple-500/20 text-purple-300 text-xs font-bold rounded-full uppercase border border-purple-500/40">Custom Room Code</span>
-                        <i class="fa-solid fa-sliders text-purple-400 text-2xl"></i>
-                    </div>
-                    <h2 class="text-2xl font-fortnite text-white mb-2">CUSTOM LOBBY</h2>
-                    <p class="text-slate-400 text-xs md:text-sm mb-4">Create or join custom lobbies with room codes, theme selection, custom rules, and GLTF GitHub skins.</p>
-
-                    <div class="mb-4">
-                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Enter Room Code (To Join)</label>
-                        <div class="flex gap-2">
-                            <input type="text" id="custom-room-code-input" placeholder="e.g. FORT-8492" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-yellow-400 font-bold focus:outline-none focus:border-purple-400 uppercase">
-                            <button onclick="joinCustomByCode()" class="fortnite-btn-blue px-4 text-xs">JOIN</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="space-y-3">
-                    <button onclick="openCustomModal()" class="fortnite-btn-blue py-3 text-sm w-full text-center tracking-wider">
-                        <i class="fa-solid fa-plus mr-2"></i> CREATE NEW CUSTOM LOBBY
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Controls Banner -->
-        <div class="mt-6 flex flex-wrap justify-center gap-4 text-xs text-slate-400 font-semibold bg-slate-900/90 px-6 py-3 rounded-full border border-slate-800">
-            <span><span class="text-yellow-400">WASD</span> Move</span>
-            <span><span class="text-yellow-400">MOUSE</span> 3D Look (Click screen to lock)</span>
-            <span><span class="text-yellow-400">LEFT CLICK</span> Fire Weapon</span>
-            <span><span class="text-yellow-400">RIGHT CLICK / Q</span> Build Wooden Wall</span>
-            <span><span class="text-yellow-400">1-5</span> Select Active Slot</span>
-            <span><span class="text-yellow-400">SPACE</span> Jump</span>
-            <span><span class="text-yellow-400">SHIFT</span> Sprint</span>
-        </div>
-    </div>
-
-    <!-- LOBBY WAITING ROOM OVERLAY -->
-    <div id="waiting-room" class="hidden absolute inset-0 z-40 flex flex-col items-center justify-center bg-slate-950/95 backdrop-blur-lg p-4">
-        <div class="glass-panel w-full max-w-2xl p-6 md:p-8 rounded-3xl border border-cyan-500/40 shadow-2xl relative flex flex-col justify-between min-h-[60vh]">
             <div>
-                <div class="flex justify-between items-center mb-6 pb-4 border-b border-slate-800">
-                    <div>
-                        <span class="text-xs text-slate-400 font-bold uppercase tracking-widest">LOBBY ROOM CODE</span>
-                        <h2 id="wait-room-code" class="text-3xl font-fortnite text-yellow-400">FORT-0000</h2>
+                <h1 class="text-xl font-bold tracking-wider bg-gradient-to-r from-white via-slate-200 to-accent bg-clip-text text-transparent">MUSICSER</h1>
+                <p class="text-xs text-slate-400">Strictly Firebase Realtime Cloud</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-4">
+            <button onclick="openAddModal()" class="hidden sm:flex items-center space-x-2 bg-accent hover:bg-accentHover text-white px-4 py-2 rounded-xl text-sm font-medium transition shadow-lg shadow-accent/25">
+                <i class="fa-solid fa-plus"></i>
+                <span>Add Track</span>
+            </button>
+            
+            <!-- User Profile / Auth Area -->
+            <div id="user-nav-area">
+                <button onclick="openAuthModal()" class="flex items-center space-x-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-xl text-sm font-medium border border-slate-700 transition">
+                    <i class="fa-solid fa-user-circle text-accent"></i>
+                    <span id="nav-username">Sign In / Up</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8 pb-32">
+        
+        <!-- Left 2 Cols: Playlist Library -->
+        <div class="lg:col-span-2 flex flex-col space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold tracking-tight">Firebase Cloud Library</h2>
+                    <p class="text-sm text-slate-400">Real-time synced songs straight from Realtime Database.</p>
+                </div>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-search"></i>
+                    </span>
+                    <input type="text" id="search-input" oninput="filterTracks()" placeholder="Search title, artist, or uploader..." class="bg-darkCard border border-slate-700/80 rounded-xl pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-accent w-full sm:w-64 transition">
+                </div>
+            </div>
+
+            <!-- Track List Table / Cards -->
+            <div class="bg-darkCard/40 border border-slate-800/80 rounded-2xl overflow-hidden shadow-xl flex-1 backdrop-blur-sm">
+                <div class="grid grid-cols-12 px-6 py-3.5 border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    <div class="col-span-1 text-center">#</div>
+                    <div class="col-span-6">Title & Artist</div>
+                    <div class="col-span-3 hidden sm:block">Uploader</div>
+                    <div class="col-span-2 text-right">Action</div>
+                </div>
+                <div id="track-list" class="divide-y divide-slate-800/50 max-h-[550px] overflow-y-auto">
+                    <!-- Dynamic Tracks injected here -->
+                    <div class="p-12 text-center text-slate-500" id="loading-state">
+                        <i class="fa-solid fa-spinner fa-spin text-3xl mb-3 text-accent"></i>
+                        <p class="text-sm">Connecting to Firebase Realtime Database...</p>
                     </div>
-                    <button onclick="copyRoomCode()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold text-cyan-300 rounded-xl border border-slate-700">
-                        <i class="fa-solid fa-copy mr-1"></i> COPY CODE
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Col: User Profile Card & Quick Add -->
+        <div class="flex flex-col space-y-6">
+            
+            <!-- Profile Card -->
+            <div id="profile-card" class="bg-darkCard border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+                <div class="flex items-center space-x-4 mb-4">
+                    <img id="profile-pfp" src="https://placehold.co/100x100/1e293b/8b5cf6?text=User" alt="PFP" class="w-16 h-16 rounded-full object-cover border-2 border-accent shadow-md">
+                    <div>
+                        <h3 id="profile-username" class="text-lg font-bold">Guest User</h3>
+                        <p id="profile-email" class="text-xs text-slate-400">Not signed in</p>
+                    </div>
+                </div>
+                <div id="profile-socials" class="flex items-center space-x-3 mb-4 text-sm text-slate-400">
+                    <span class="text-xs italic">No social links added</span>
+                </div>
+                <div class="flex space-x-2">
+                    <button onclick="openAuthModal()" id="profile-auth-btn" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium py-2 rounded-xl transition border border-slate-700">
+                        Sign In / Register
+                    </button>
+                    <button onclick="openEditProfileModal()" id="profile-edit-btn" class="hidden flex-1 bg-accent/20 hover:bg-accent/30 text-accent text-xs font-medium py-2 rounded-xl transition border border-accent/30">
+                        Edit Profile
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quick Add Card -->
+            <div class="bg-darkCard border border-slate-800 rounded-2xl p-6 shadow-xl">
+                <h3 class="text-md font-bold mb-4 flex items-center space-x-2">
+                    <i class="fa-solid fa-cloud-arrow-up text-accent"></i>
+                    <span>Add Track to Firebase</span>
+                </h3>
+                <form id="quick-add-form" onsubmit="handleAddTrack(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Song Title</label>
+                        <input type="text" id="track-title" required placeholder="e.g. Cloud Anthem" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:border-accent">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Artist Name</label>
+                        <input type="text" id="track-artist" required placeholder="e.g. Firebase Crew" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:border-accent">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Raw Audio File URL (.mp3)</label>
+                        <input type="url" id="track-url" required placeholder="https://example.com/song.mp3" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:border-accent">
+                    </div>
+                    <button type="submit" id="submit-btn" class="w-full bg-accent hover:bg-accentHover text-white font-medium py-2.5 rounded-xl text-sm transition shadow-lg shadow-accent/20 flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-circle-plus"></i>
+                        <span>Store in Firebase</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Fixed Bottom Audio Player -->
+    <footer class="fixed bottom-0 left-0 right-0 bg-darkCard/95 border-t border-slate-800 backdrop-blur-md z-50 px-4 py-3 sm:px-8">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            
+            <!-- Song Info -->
+            <div class="flex items-center space-x-4 w-full md:w-1/4">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-tr from-accent/30 to-pink-500/30 border border-slate-700 flex items-center justify-center flex-shrink-0 text-accent">
+                    <i class="fa-solid fa-music text-lg animate-pulse"></i>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <h4 class="text-sm font-semibold truncate" id="current-title">Select a track</h4>
+                    <p class="text-xs text-slate-400 truncate" id="current-artist">No track playing</p>
+                </div>
+            </div>
+
+            <!-- Controls & Progress -->
+            <div class="flex flex-col items-center w-full md:w-2/4 space-y-2">
+                <div class="flex items-center space-x-6">
+                    <button onclick="playPrev()" class="text-slate-400 hover:text-white transition" title="Previous">
+                        <i class="fa-solid fa-backward-step text-lg"></i>
+                    </button>
+                    <button onclick="togglePlayPause()" id="play-pause-btn" class="w-10 h-10 rounded-full bg-white text-darkBg hover:scale-105 transition flex items-center justify-center shadow-lg">
+                        <i class="fa-solid fa-play text-sm ml-0.5"></i>
+                    </button>
+                    <button onclick="playNext()" class="text-slate-400 hover:text-white transition" title="Next">
+                        <i class="fa-solid fa-forward-step text-lg"></i>
                     </button>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4 mb-6">
-                    <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800">
-                        <span class="text-[10px] text-slate-400 font-bold uppercase">HOST NAME</span>
-                        <div id="wait-host-name" class="font-bold text-white text-sm">VictoryHost</div>
+                <!-- Timeline Bar -->
+                <div class="w-full flex items-center space-x-3 text-xs text-slate-400">
+                    <span id="current-time">0:00</span>
+                    <div class="flex-1 bg-slate-800 h-1.5 rounded-full overflow-hidden cursor-pointer relative" id="progress-container" onclick="seekAudio(event)">
+                        <div id="progress-bar" class="bg-accent h-full w-0 transition-all duration-100"></div>
                     </div>
-                    <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800">
-                        <span class="text-[10px] text-slate-400 font-bold uppercase">MAP THEME / RULES</span>
-                        <div id="wait-theme-desc" class="font-bold text-cyan-300 text-sm">Grassland • Standard</div>
-                    </div>
-                </div>
-
-                <div class="mb-6">
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="text-xs font-bold text-slate-300 uppercase">CONNECTED PLAYERS (<span id="wait-player-count">1</span>/<span id="wait-max-count">20</span>)</span>
-                    </div>
-                    <div id="wait-player-list" class="space-y-2 max-h-48 overflow-y-auto pr-1">
-                        <!-- Dynamic Player List -->
-                    </div>
+                    <span id="duration">0:00</span>
                 </div>
             </div>
 
-            <div class="flex gap-4">
-                <button onclick="leaveLobby()" class="flex-1 py-3 bg-rose-950/80 hover:bg-rose-900 text-rose-300 font-bold rounded-xl border border-rose-800 text-sm">
-                    LEAVE LOBBY
+            <!-- Volume & Extras -->
+            <div class="hidden md:flex items-center justify-end space-x-3 w-1/4">
+                <i class="fa-solid fa-volume-high text-slate-400 text-sm"></i>
+                <input type="range" min="0" max="1" step="0.01" value="1" oninput="adjustVolume(this.value)" class="w-24 accent-accent bg-slate-800 rounded-lg h-1.5 cursor-pointer">
+            </div>
+
+        </div>
+    </footer>
+
+    <!-- Add Track Modal (Mobile) -->
+    <div id="modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-darkCard border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl relative">
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <h3 class="text-lg font-bold mb-4 flex items-center space-x-2">
+                <i class="fa-solid fa-cloud-arrow-up text-accent"></i>
+                <span>Add Track to Firebase</span>
+            </h3>
+            <form onsubmit="handleModalAdd(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Song Title</label>
+                    <input type="text" id="modal-title" required placeholder="Song Name" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:border-accent">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Artist Name</label>
+                    <input type="text" id="modal-artist" required placeholder="Artist Name" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:border-accent">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Raw Audio File URL (.mp3)</label>
+                    <input type="url" id="modal-url" required placeholder="https://..." class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:border-accent">
+                </div>
+                <button type="submit" class="w-full bg-accent hover:bg-accentHover text-white font-medium py-2.5 rounded-xl text-sm transition shadow-lg shadow-accent/20">
+                    Upload to Firebase
                 </button>
-                <button id="btn-start-game" onclick="hostStartMatch()" class="hidden flex-2 fortnite-btn py-3 text-lg px-8">
-                    START MATCH NOW
+            </form>
+        </div>
+    </div>
+
+    <!-- Auth Modal (Sign In / Register) -->
+    <div id="auth-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-darkCard border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl relative">
+            <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <h3 id="auth-modal-title" class="text-lg font-bold mb-4 flex items-center space-x-2">
+                <i class="fa-solid fa-user-lock text-accent"></i>
+                <span>Sign In to MUSICSER</span>
+            </h3>
+            <form onsubmit="handleAuthSubmit(event)" class="space-y-4">
+                <div id="auth-username-field" class="hidden">
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Username</label>
+                    <input type="text" id="auth-username" placeholder="coolmusician" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:border-accent">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Email Address</label>
+                    <input type="email" id="auth-email" required placeholder="you@example.com" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:border-accent">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Password</label>
+                    <input type="password" id="auth-password" required placeholder="••••••••" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:border-accent">
+                </div>
+                <button type="submit" id="auth-submit-btn" class="w-full bg-accent hover:bg-accentHover text-white font-medium py-2.5 rounded-xl text-sm transition shadow-lg shadow-accent/20">
+                    Sign In
                 </button>
-            </div>
+                <div class="text-center pt-2">
+                    <button type="button" onclick="toggleAuthMode()" id="auth-switch-btn" class="text-xs text-slate-400 hover:text-accent transition">
+                        Don't have an account? <b>Register</b>
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
-    <!-- CUSTOM LOBBY CONFIG MODAL -->
-    <div id="custom-modal" class="hidden absolute inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4">
-        <div class="glass-panel w-full max-w-2xl p-6 md:p-8 rounded-3xl border border-purple-500/40 shadow-2xl relative max-h-[90vh] overflow-y-auto">
-            <button onclick="closeCustomModal()" class="absolute top-6 right-6 text-slate-400 hover:text-white text-xl">
-                <i class="fa-solid fa-xmark"></i>
+    <!-- Edit Profile Modal -->
+    <div id="edit-profile-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-darkCard border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl relative">
+            <button onclick="closeEditProfileModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-lg"></i>
             </button>
-            <h2 class="text-2xl font-fortnite text-purple-400 mb-6 flex items-center gap-3">
-                <i class="fa-solid fa-sliders"></i> CREATE CUSTOM LOBBY
-            </h2>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <!-- Max Capacity -->
+            <h3 class="text-lg font-bold mb-4 flex items-center space-x-2">
+                <i class="fa-solid fa-user-pen text-accent"></i>
+                <span>Edit Profile & Socials</span>
+            </h3>
+            <form onsubmit="handleEditProfileSubmit(event)" class="space-y-4">
                 <div>
-                    <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Max Players (2 - 50)</label>
-                    <input type="number" id="cust-max-players" value="10" min="2" max="50" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Username</label>
+                    <input type="text" id="edit-username" required class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:border-accent">
                 </div>
-                <!-- Environment Theme -->
                 <div>
-                    <label class="block text-xs font-bold text-slate-300 uppercase mb-1">3D Arena Theme</label>
-                    <select id="cust-theme" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
-                        <option value="grassland">🌱 Grassland</option>
-                        <option value="desert">🏜️ Desert</option>
-                        <option value="snow">❄️ Snow</option>
-                        <option value="urban">🏙️ Urban Arena</option>
-                    </select>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Profile Picture (PFP) URL</label>
+                    <input type="url" id="edit-pfp" placeholder="https://example.com/avatar.jpg" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:border-accent">
                 </div>
-                <!-- Storm Speed -->
                 <div>
-                    <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Storm Shrink Speed</label>
-                    <select id="cust-storm" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
-                        <option value="slow">Slow & Mild</option>
-                        <option value="normal" selected>Standard Blitz</option>
-                        <option value="fast">Fast Hyper-Zone</option>
-                    </select>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Twitter / X Profile URL</label>
+                    <input type="url" id="edit-social-twitter" placeholder="https://twitter.com/username" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:border-accent">
                 </div>
-                <!-- Initial Shield -->
                 <div>
-                    <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Initial Shield</label>
-                    <select id="cust-shield" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
-                        <option value="0">0 Shield</option>
-                        <option value="50" selected>50 Shield</option>
-                        <option value="100">100 Full Shield</option>
-                    </select>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Instagram Profile URL</label>
+                    <input type="url" id="edit-social-instagram" placeholder="https://instagram.com/username" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:border-accent">
                 </div>
-            </div>
-
-            <!-- GITHUB GLTF SKIN URL -->
-            <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 mb-6 space-y-2">
-                <div class="flex items-center gap-2">
-                    <i class="fa-brands fa-github text-yellow-400 text-xl"></i>
-                    <h3 class="font-fortnite text-sm text-white">CUSTOM GITHUB 3D GLTF/GLB MODEL</h3>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">SoundCloud / Website URL</label>
+                    <input type="url" id="edit-social-web" placeholder="https://soundcloud.com/username" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:border-accent">
                 </div>
-                <p class="text-xs text-slate-400">Provide a raw `.gltf` or `.glb` model URL from GitHub to render your avatar, or leave blank to use default procedural avatar.</p>
-                <input type="text" id="cust-github-url" placeholder="https://raw.githubusercontent.com/user/repo/main/model.glb" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-cyan-300 focus:outline-none focus:border-cyan-400">
-            </div>
-
-            <button onclick="createCustomLobbyAction()" class="fortnite-btn py-3 text-lg w-full text-center">
-                CREATE ROOM & OPEN WAITING LOBBY
-            </button>
+                <button type="submit" class="w-full bg-accent hover:bg-accentHover text-white font-medium py-2.5 rounded-xl text-sm transition shadow-lg shadow-accent/20">
+                    Save Profile
+                </button>
+                <div class="pt-2 border-t border-slate-800 text-right">
+                    <button type="button" onclick="handleSignOut()" class="text-xs text-red-400 hover:text-red-300 transition">
+                        <i class="fa-solid fa-arrow-right-from-bracket mr-1"></i> Sign Out
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
-    <!-- HUD OVERLAY -->
-    <div id="game-hud" class="hidden absolute inset-0 pointer-events-none z-30 flex flex-col justify-between p-4 md:p-6">
-        <div id="crosshair"></div>
-
-        <!-- Top Bar: Health, Shield, Alive Counter -->
-        <div class="flex justify-between items-start">
-            <div class="flex flex-col gap-2 w-64 md:w-80">
-                <!-- Shield -->
-                <div class="bg-slate-900/90 border-2 border-cyan-500/60 p-1.5 rounded-xl shadow-lg relative overflow-hidden">
-                    <div class="flex justify-between text-xs font-extrabold text-cyan-300 px-2 mb-1 z-10 relative">
-                        <span><i class="fa-solid fa-shield-halved mr-1"></i> SHIELD</span>
-                        <span id="hud-shield-num">50 / 100</span>
-                    </div>
-                    <div class="w-full bg-slate-800 h-3 rounded-md overflow-hidden">
-                        <div id="hud-shield-bar" class="bg-gradient-to-r from-cyan-400 to-blue-500 h-full transition-all duration-150" style="width: 50%;"></div>
-                    </div>
-                </div>
-                <!-- Health -->
-                <div class="bg-slate-900/90 border-2 border-emerald-500/60 p-1.5 rounded-xl shadow-lg relative overflow-hidden">
-                    <div class="flex justify-between text-xs font-extrabold text-emerald-300 px-2 mb-1 z-10 relative">
-                        <span><i class="fa-solid fa-heart mr-1"></i> HEALTH</span>
-                        <span id="hud-health-num">100 / 100</span>
-                    </div>
-                    <div class="w-full bg-slate-800 h-3 rounded-md overflow-hidden">
-                        <div id="hud-health-bar" class="bg-gradient-to-r from-emerald-400 to-green-600 h-full transition-all duration-150" style="width: 100%;"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Stats -->
-            <div class="flex gap-3">
-                <div class="glass-panel px-4 py-2 rounded-xl flex items-center gap-3 border border-yellow-500/40">
-                    <i class="fa-solid fa-users text-yellow-400 text-xl"></i>
-                    <div>
-                        <div class="text-[10px] text-slate-400 font-bold uppercase">ALIVE PLAYERS</div>
-                        <div id="hud-alive" class="font-fortnite text-xl text-yellow-400">1</div>
-                    </div>
-                </div>
-                <div class="glass-panel px-4 py-2 rounded-xl flex items-center gap-3 border border-rose-500/40">
-                    <i class="fa-solid fa-crosshairs text-rose-400 text-xl"></i>
-                    <div>
-                        <div class="text-[10px] text-slate-400 font-bold uppercase">ELIMS</div>
-                        <div id="hud-elims" class="font-fortnite text-xl text-rose-400">0</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Center Kill Feed -->
-        <div id="kill-feed" class="self-center flex flex-col items-center gap-1 max-h-24 overflow-hidden text-xs font-bold pointer-events-none"></div>
-
-        <!-- Bottom Bar: Wood Materials & Inventory Hotbar -->
-        <div class="flex justify-between items-end gap-4">
-            <div class="glass-panel px-4 py-3 rounded-2xl flex items-center gap-3 border border-amber-600/50">
-                <i class="fa-solid fa-cubes text-amber-500 text-2xl"></i>
-                <div>
-                    <div class="text-[10px] text-slate-400 font-bold uppercase">WOOD MATS (Q / RMB)</div>
-                    <div id="hud-wood" class="font-fortnite text-2xl text-amber-400">100</div>
-                </div>
-            </div>
-
-            <div id="hud-inventory" class="flex gap-2 bg-slate-950/80 p-2 rounded-2xl border border-slate-800 pointer-events-auto">
-                <!-- Weapon slots dynamically generated -->
-            </div>
-        </div>
+    <!-- Custom Notification Toast -->
+    <div id="toast" class="fixed top-20 right-4 bg-slate-800 border border-slate-700 text-white px-4 py-3 rounded-xl shadow-2xl transform translate-y-[-150%] transition-transform duration-300 z-50 flex items-center space-x-3">
+        <i class="fa-solid fa-circle-check text-green-400"></i>
+        <span id="toast-msg" class="text-sm font-medium">Success</span>
     </div>
 
-    <!-- END GAME OVERLAY -->
-    <div id="end-screen" class="hidden absolute inset-0 z-50 flex flex-col items-center justify-center bg-slate-950/90 backdrop-blur-lg">
-        <div class="text-center p-8 glass-panel rounded-3xl max-w-md w-full border border-slate-700 shadow-2xl">
-            <div id="end-banner" class="text-5xl font-fortnite mb-2 text-yellow-400">VICTORY ROYALE!</div>
-            <p id="end-subtitle" class="text-slate-300 font-semibold mb-6">#1 - Last Player Standing!</p>
+    <!-- Hidden Audio Element -->
+    <audio id="audio-player" preload="metadata"></audio>
 
-            <div class="grid grid-cols-2 gap-4 mb-8 bg-slate-900/80 p-4 rounded-2xl border border-slate-800">
-                <div>
-                    <div class="text-xs text-slate-400 font-bold uppercase">Eliminations</div>
-                    <div id="end-elims" class="font-fortnite text-3xl text-rose-400">0</div>
-                </div>
-                <div>
-                    <div class="text-xs text-slate-400 font-bold uppercase">Placement</div>
-                    <div id="end-rank" class="font-fortnite text-3xl text-yellow-400">#1</div>
-                </div>
-            </div>
+    <!-- Strict Firebase Realtime Database & Auth Integration Script -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getDatabase, ref, push, set, onValue, get, child } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
 
-            <button onclick="returnToMenu()" class="fortnite-btn py-4 text-xl w-full text-center">
-                MAIN MENU
-            </button>
-        </div>
-    </div>
-
-    <!-- FIREBASE INITIALIZATION & REALTIME P2P SIGNALING ENGINE -->
-    <script>
-        // Exact Firebase Config provided
         const firebaseConfig = {
             apiKey: "AIzaSyCZwwg8vlYo3LV_k4I9BydIcbKkU_xO9a8",
             authDomain: "file-share-a5d42.firebaseapp.com",
@@ -387,879 +334,497 @@
             measurementId: "G-6JYDD5G7S4"
         };
 
-        // Initialize Firebase
-        let firebaseApp, db;
-        try {
-            firebaseApp = firebase.initializeApp(firebaseConfig);
-            db = firebase.database();
-            logNetStatus("Firebase DB Initialized Successfully", "success");
-        } catch(e) {
-            console.error("Firebase Init Error:", e);
-            logNetStatus("Firebase Init Failed: Operating Offline", "error");
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'musicser-default-app';
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getDatabase(app);
+
+        window.currentUserProfile = null;
+        window.allTracks = [];
+        window.allProfiles = {};
+        window.currentPlayingId = null;
+        window.isRegisterMode = false;
+
+        // Monitor Firebase Auth State
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                // Fetch profile data from RTDB
+                const profileRef = ref(db, `artifacts/${appId}/public/data/users/${user.uid}`);
+                const snapshot = await get(profileRef);
+                if (snapshot.exists()) {
+                    window.currentUserProfile = { uid: user.uid, email: user.email, ...snapshot.val() };
+                } else {
+                    // Create default profile if missing
+                    const defaultProfile = {
+                        username: user.email.split('@')[0],
+                        email: user.email,
+                        pfp: `https://placehold.co/100x100/1e293b/8b5cf6?text=${user.email.substring(0,2).toUpperCase()}`,
+                        socials: { twitter: '', instagram: '', web: '' }
+                    };
+                    await set(profileRef, defaultProfile);
+                    window.currentUserProfile = { uid: user.uid, ...defaultProfile };
+                }
+            } else {
+                window.currentUserProfile = null;
+            }
+            updateUIForAuth();
+        });
+
+        // Load all user profiles for track author attribution
+        function subscribeProfiles() {
+            const profilesRef = ref(db, `artifacts/${appId}/public/data/users`);
+            onValue(profilesRef, (snapshot) => {
+                window.allProfiles = snapshot.val() || {};
+                renderTracks(window.allTracks);
+                updateUIForAuth();
+            });
         }
 
-        // WebRTC Configuration with STUN servers
-        const rtcConfig = {
-            iceServers: [
-                { urls: "stun:stun.l.google.com:19020" },
-                { urls: "stun:stun1.l.google.com:19020" },
-                { urls: "stun:stun2.l.google.com:19020" }
-            ]
+        subscribeProfiles();
+        subscribeToRealtimeTracks();
+
+        // Subscribe to Tracks
+        function subscribeToRealtimeTracks() {
+            const tracksRef = ref(db, `artifacts/${appId}/public/data/tracks`);
+            onValue(tracksRef, (snapshot) => {
+                const data = snapshot.val();
+                const tracks = [];
+                if (data) {
+                    Object.keys(data).forEach((key) => {
+                        tracks.push({ id: key, ...data[key] });
+                    });
+                }
+                tracks.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+                window.allTracks = tracks;
+                renderTracks(tracks);
+                
+                const loadingState = document.getElementById('loading-state');
+                if (loadingState) loadingState.style.display = tracks.length === 0 ? 'block' : 'none';
+            }, (error) => {
+                console.error("Firebase RTDB error:", error);
+            });
+        }
+
+        // Authentication Functions attached to window explicitly
+        window.handleAuthAction = async function(email, password, username) {
+            try {
+                if (window.isRegisterMode) {
+                    const cred = await createUserWithEmailAndPassword(auth, email, password);
+                    const user = cred.user;
+                    const profileData = {
+                        username: username || email.split('@')[0],
+                        email: email,
+                        pfp: `https://placehold.co/100x100/1e293b/8b5cf6?text=${(username || email).substring(0,2).toUpperCase()}`,
+                        socials: { twitter: '', instagram: '', web: '' }
+                    };
+                    await set(ref(db, `artifacts/${appId}/public/data/users/${user.uid}`), profileData);
+                    showToast("Account registered successfully!");
+                } else {
+                    await signInWithEmailAndPassword(auth, email, password);
+                    showToast("Signed in successfully!");
+                }
+                closeAuthModal();
+            } catch (err) {
+                console.error("Auth error:", err);
+                showToast(err.message, true);
+            }
         };
 
-        // Networking State Variables
-        const myPeerId = 'player_' + Math.floor(Math.random() * 899999 + 100000);
-        let currentRoomId = null;
-        let isHost = false;
-        let peerConnections = {}; // peerId -> RTCPeerConnection
-        let dataChannels = {};    // peerId -> RTCDataChannel
-        let remotePlayers = {};   // peerId -> { mesh, data, health, shield }
-        let roomRef = null;
+        window.handleSignOut = async function() {
+            try {
+                await signOut(auth);
+                closeEditProfileModal();
+                showToast("Signed out successfully.");
+            } catch (err) {
+                showToast("Error signing out.", true);
+            }
+        };
 
-        function logNetStatus(msg, type = "info") {
-            const container = document.getElementById('net-log');
-            if (!container) return;
-            const toast = document.createElement('div');
-            const bgClass = type === 'error' ? 'bg-rose-900/90 text-rose-200 border-rose-700' :
-                           type === 'success' ? 'bg-emerald-900/90 text-emerald-200 border-emerald-700' :
-                           'bg-slate-900/90 text-cyan-300 border-slate-700';
-            toast.className = `px-3 py-1.5 rounded-xl border text-xs font-semibold shadow-lg backdrop-blur-md ${bgClass} transition-all duration-300`;
-            toast.innerHTML = `<i class="fa-solid fa-circle-info mr-1.5"></i> ${msg}`;
-            container.appendChild(toast);
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 400);
-            }, 4000);
+        window.updateProfileInDB = async function(username, pfp, twitter, instagram, web) {
+            if (!auth.currentUser) return;
+            const uid = auth.currentUser.uid;
+            const updated = {
+                username: username.trim(),
+                email: auth.currentUser.email,
+                pfp: pfp.trim() || `https://placehold.co/100x100/1e293b/8b5cf6?text=${username.substring(0,2).toUpperCase()}`,
+                socials: {
+                    twitter: twitter.trim(),
+                    instagram: instagram.trim(),
+                    web: web.trim()
+                }
+            };
+            try {
+                await set(ref(db, `artifacts/${appId}/public/data/users/${uid}`), updated);
+                window.currentUserProfile = { uid, ...updated };
+                updateUIForAuth();
+                closeEditProfileModal();
+                showToast("Profile updated successfully!");
+            } catch (err) {
+                showToast("Failed to update profile.", true);
+            }
+        };
+
+        // Save Track to RTDB
+        window.saveTrackToFirebase = async function(title, artist, url) {
+            if (!title || !artist || !url) {
+                showToast("Please fill in all fields.", true);
+                return;
+            }
+            if (!auth.currentUser) {
+                showToast("Please sign in to add tracks to Firebase.", true);
+                openAuthModal();
+                return;
+            }
+
+            try {
+                const tracksRef = ref(db, `artifacts/${appId}/public/data/tracks`);
+                await push(tracksRef, {
+                    title: title.trim(),
+                    artist: artist.trim(),
+                    url: url.trim(),
+                    addedBy: auth.currentUser.uid,
+                    createdAt: Date.now()
+                });
+                showToast("Track successfully saved to Firebase!");
+            } catch (err) {
+                console.error("Firebase write error:", err);
+                showToast("Error saving track.", true);
+            }
+        };
+
+        function updateUIForAuth() {
+            const navUsername = document.getElementById('nav-username');
+            const profileUsername = document.getElementById('profile-username');
+            const profileEmail = document.getElementById('profile-email');
+            const profilePfp = document.getElementById('profile-pfp');
+            const profileSocials = document.getElementById('profile-socials');
+            const profileAuthBtn = document.getElementById('profile-auth-btn');
+            const profileEditBtn = document.getElementById('profile-edit-btn');
+
+            if (window.currentUserProfile) {
+                const p = window.currentUserProfile;
+                if (navUsername) navUsername.textContent = p.username;
+                if (profileUsername) profileUsername.textContent = p.username;
+                if (profileEmail) profileEmail.textContent = p.email;
+                if (profilePfp && p.pfp) profilePfp.src = p.pfp;
+
+                let socialHTML = '';
+                if (p.socials) {
+                    if (p.socials.twitter) socialHTML += `<a href="${p.socials.twitter}" target="_blank" class="hover:text-accent"><i class="fa-brands fa-twitter"></i></a>`;
+                    if (p.socials.instagram) socialHTML += `<a href="${p.socials.instagram}" target="_blank" class="hover:text-accent"><i class="fa-brands fa-instagram"></i></a>`;
+                    if (p.socials.web) socialHTML += `<a href="${p.socials.web}" target="_blank" class="hover:text-accent"><i class="fa-solid fa-globe"></i></a>`;
+                }
+                if (profileSocials) {
+                    profileSocials.innerHTML = socialHTML || '<span class="text-xs italic text-slate-500">No social links added</span>';
+                }
+
+                if (profileAuthBtn) profileAuthBtn.classList.add('hidden');
+                if (profileEditBtn) profileEditBtn.classList.remove('hidden');
+            } else {
+                if (navUsername) navUsername.textContent = "Sign In / Up";
+                if (profileUsername) profileUsername.textContent = "Guest User";
+                if (profileEmail) profileEmail.textContent = "Not signed in";
+                if (profilePfp) profilePfp.src = "https://placehold.co/100x100/1e293b/8b5cf6?text=Guest";
+                if (profileSocials) profileSocials.innerHTML = '<span class="text-xs italic">Sign in to sync profile</span>';
+
+                if (profileAuthBtn) profileAuthBtn.classList.remove('hidden');
+                if (profileEditBtn) profileEditBtn.classList.add('hidden');
+            }
         }
     </script>
 
-    <!-- 3D THREE.JS ENGINE & GAMEPLAY LOGIC -->
+    <!-- App Frontend Logic -->
     <script>
-        const WEAPONS = {
-            rifle: { name: 'Assault Rifle', color: '#facc15', damage: 28, fireRate: 140, icon: 'fa-shield-cat' },
-            shotgun: { name: 'Pump Shotgun', color: '#38bdf8', damage: 70, fireRate: 850, icon: 'fa-burst' },
-            sniper: { name: 'Sniper Rifle', color: '#a855f7', damage: 110, fireRate: 1400, icon: 'fa-crosshairs' },
-            medkit: { name: 'Medkit (+50 HP)', color: '#10b981', heal: 50, isConsumable: true, icon: 'fa-kit-medical' },
-            shield: { name: 'Shield Potion (+50)', color: '#06b6d4', shield: 50, isConsumable: true, icon: 'fa-bottle-water' }
-        };
+        const audioPlayer = document.getElementById('audio-player');
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        const progressBar = document.getElementById('progress-bar');
+        const progressContainer = document.getElementById('progress-container');
+        const currentTimeEl = document.getElementById('current-time');
+        const durationEl = document.getElementById('duration');
+        const currentTitleEl = document.getElementById('current-title');
+        const currentArtistEl = document.getElementById('current-artist');
 
-        const THEMES = {
-            grassland: { ground: 0x2d5a27, fog: 0x87ceeb, tree: 0x15803d, rock: 0x64748b },
-            desert: { ground: 0xd97706, fog: 0xfef08a, tree: 0xb45309, rock: 0x78350f },
-            snow: { ground: 0xe2e8f0, fog: 0xcbd5e1, tree: 0x0284c7, rock: 0x475569 },
-            urban: { ground: 0x334155, fog: 0x94a3b8, tree: 0x475569, rock: 0x1e293b }
-        };
+        let isPlaying = false;
 
-        let scene, camera, renderer;
-        let clock = new THREE.Clock();
-        let gltfLoader = new THREE.GLTFLoader();
-
-        let localPlayerMesh = null;
-        let localPlayer = {
-            position: new THREE.Vector3(0, 2, 0),
-            velocity: new THREE.Vector3(),
-            rotationY: 0,
-            rotationX: 0,
-            health: 100,
-            shield: 50,
-            wood: 100,
-            inventory: [
-                { ...WEAPONS.rifle },
-                { ...WEAPONS.shotgun },
-                { ...WEAPONS.sniper },
-                { ...WEAPONS.medkit },
-                { ...WEAPONS.shield }
-            ],
-            selectedSlot: 0,
-            lastShot: 0,
-            isGrounded: true,
-            displayName: 'VictoryPlayer'
-        };
-
-        let gameState = 'MENU';
-        let eliminations = 0;
-        let publicLobbySize = 10;
-        let keys = {};
-        let isPointerLocked = false;
-        let builtWalls = [];
-        let bullets = [];
-
-        let storm = {
-            radius: 350,
-            center: new THREE.Vector3(0, 0, 0),
-            mesh: null,
-            speed: 0.12
-        };
-
-        let roomSettings = {
-            maxPlayers: 10,
-            theme: 'grassland',
-            stormSpeed: 'normal',
-            initialShield: 50,
-            githubUrl: ''
-        };
-
-        /* --- THREE.JS INITIALIZATION --- */
-        function initThreeEngine() {
-            if (scene) return;
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x87ceeb);
-            scene.fog = new THREE.FogExp2(0x87ceeb, 0.0025);
-
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-            document.body.appendChild(renderer.domElement);
-
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-            scene.add(ambientLight);
-
-            const sunLight = new THREE.DirectionalLight(0xffffff, 0.9);
-            sunLight.position.set(120, 200, 80);
-            sunLight.castShadow = true;
-            sunLight.shadow.mapSize.width = 2048;
-            sunLight.shadow.mapSize.height = 2048;
-            scene.add(sunLight);
-
-            window.addEventListener('resize', () => {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
-            });
-        }
-
-        /* --- BUILD ENVIRONMENT SCENE --- */
-        function setupGameScene() {
-            initThreeEngine();
-
-            // Reset Scene
-            while(scene.children.length > 0) {
-                scene.remove(scene.children[0]);
-            }
-
-            const theme = THEMES[roomSettings.theme] || THEMES.grassland;
-            scene.background.setHex(theme.fog);
-            scene.fog.color.setHex(theme.fog);
-
-            // Re-add lights
-            const ambient = new THREE.AmbientLight(0xffffff, 0.65);
-            scene.add(ambient);
-            const sun = new THREE.DirectionalLight(0xffffff, 0.9);
-            sun.position.set(100, 200, 100);
-            sun.castShadow = true;
-            scene.add(sun);
-
-            // Ground Terrain
-            const groundGeo = new THREE.PlaneGeometry(800, 800, 32, 32);
-            const groundMat = new THREE.MeshStandardMaterial({ color: theme.ground, roughness: 0.9 });
-            const ground = new THREE.Mesh(groundGeo, groundMat);
-            ground.rotation.x = -Math.PI / 2;
-            ground.receiveShadow = true;
-            scene.add(ground);
-
-            // Environment Objects: Trees & Rocks
-            for (let i = 0; i < 70; i++) {
-                const rx = (Math.random() - 0.5) * 600;
-                const rz = (Math.random() - 0.5) * 600;
-
-                // Trunk/Rock
-                if (i % 2 === 0) {
-                    // Tree
-                    const trunkGeo = new THREE.CylinderGeometry(0.5, 0.7, 5);
-                    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x543d2b });
-                    const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-                    trunk.position.set(rx, 2.5, rz);
-                    trunk.castShadow = true;
-                    scene.add(trunk);
-
-                    const leavesGeo = new THREE.ConeGeometry(3, 7, 8);
-                    const leavesMat = new THREE.MeshStandardMaterial({ color: theme.tree });
-                    const leaves = new THREE.Mesh(leavesGeo, leavesMat);
-                    leaves.position.set(rx, 7.5, rz);
-                    leaves.castShadow = true;
-                    scene.add(leaves);
-                } else {
-                    // Rock
-                    const rockGeo = new THREE.DodecahedronGeometry(Math.random() * 1.5 + 1);
-                    const rockMat = new THREE.MeshStandardMaterial({ color: theme.rock, roughness: 0.8 });
-                    const rock = new THREE.Mesh(rockGeo, rockMat);
-                    rock.position.set(rx, 1, rz);
-                    rock.castShadow = true;
-                    scene.add(rock);
-                }
-            }
-
-            // Local Player Capsule Mesh
-            localPlayerMesh = createAvatarMesh(0x38bdf8, localPlayer.displayName);
-            localPlayer.position.set((Math.random() - 0.5) * 50, 2, (Math.random() - 0.5) * 50);
-            localPlayerMesh.position.copy(localPlayer.position);
-            scene.add(localPlayerMesh);
-
-            // Check GitHub GLTF Link
-            if (roomSettings.githubUrl) {
-                gltfLoader.load(roomSettings.githubUrl, (gltf) => {
-                    scene.remove(localPlayerMesh);
-                    const customMesh = gltf.scene;
-                    customMesh.scale.set(1.5, 1.5, 1.5);
-                    localPlayerMesh = customMesh;
-                    scene.add(localPlayerMesh);
-                    logNetStatus("Custom GitHub 3D Avatar Loaded!", "success");
-                }, undefined, (err) => {
-                    logNetStatus("GitHub Model load failed, using procedural avatar", "error");
-                });
-            }
-
-            // 3D Storm Barrier Cylinder
-            storm.radius = 350;
-            storm.speed = roomSettings.stormSpeed === 'slow' ? 0.05 : (roomSettings.stormSpeed === 'fast' ? 0.22 : 0.12);
-            const stormGeo = new THREE.CylinderGeometry(storm.radius, storm.radius, 150, 64, 1, true);
-            const stormMat = new THREE.MeshBasicMaterial({ color: 0xa855f7, transparent: true, opacity: 0.3, side: THREE.DoubleSide });
-            storm.mesh = new THREE.Mesh(stormGeo, stormMat);
-            storm.mesh.position.set(0, 75, 0);
-            scene.add(storm.mesh);
-
-            builtWalls = [];
-            bullets = [];
-            eliminations = 0;
-            localPlayer.health = 100;
-            localPlayer.shield = parseInt(roomSettings.initialShield) || 50;
-            localPlayer.wood = 100;
-
-            updateHUDInventory();
-            updateHUDWood();
-        }
-
-        function createAvatarMesh(colorHex, name) {
-            const group = new THREE.Group();
-            
-            // Body Cylinder
-            const bodyGeo = new THREE.CylinderGeometry(0.7, 0.7, 2.4, 16);
-            const bodyMat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.3 });
-            const body = new THREE.Mesh(bodyGeo, bodyMat);
-            body.position.y = 1.2;
-            body.castShadow = true;
-            group.add(body);
-
-            // Head Sphere
-            const headGeo = new THREE.SphereGeometry(0.5, 16, 16);
-            const headMat = new THREE.MeshStandardMaterial({ color: 0xfde047 });
-            const head = new THREE.Mesh(headGeo, headMat);
-            head.position.y = 2.6;
-            head.castShadow = true;
-            group.add(head);
-
-            return group;
-        }
-
-        /* --- 3D GRID BUILDING MECHANIC --- */
-        function buildWoodenWall() {
-            if (gameState !== 'PLAYING' || localPlayer.wood < 10) return;
-            localPlayer.wood -= 10;
-            updateHUDWood();
-
-            const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), localPlayer.rotationY);
-            const targetPos = localPlayer.position.clone().add(forward.multiplyScalar(4.5));
-
-            // Grid snapping
-            const snapX = Math.round(targetPos.x / 4) * 4;
-            const snapZ = Math.round(targetPos.z / 4) * 4;
-
-            const wallGeo = new THREE.BoxGeometry(4.5, 3.5, 0.4);
-            const wallMat = new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.8 });
-            const wall = new THREE.Mesh(wallGeo, wallMat);
-            wall.position.set(snapX, 1.75, snapZ);
-            wall.rotation.y = Math.round(localPlayer.rotationY / (Math.PI / 2)) * (Math.PI / 2);
-            wall.castShadow = true;
-            wall.receiveShadow = true;
-            scene.add(wall);
-
-            const wallData = { x: snapX, y: 1.75, z: snapZ, rotY: wall.rotation.y };
-            builtWalls.push(wall);
-
-            // Network Sync Wall
-            broadcastNetworkEvent({ type: 'BUILD_WALL', wall: wallData });
-        }
-
-        function spawnRemoteWall(wallData) {
-            const wallGeo = new THREE.BoxGeometry(4.5, 3.5, 0.4);
-            const wallMat = new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.8 });
-            const wall = new THREE.Mesh(wallGeo, wallMat);
-            wall.position.set(wallData.x, wallData.y, wallData.z);
-            wall.rotation.y = wallData.rotY;
-            wall.castShadow = true;
-            wall.receiveShadow = true;
-            scene.add(wall);
-            builtWalls.push(wall);
-        }
-
-        /* --- WEAPON SHOOTING & CONSUMABLES --- */
-        function useSelectedSlot() {
-            if (gameState !== 'PLAYING') return;
-            const item = localPlayer.inventory[localPlayer.selectedSlot];
-            if (!item) return;
-
-            if (item.isConsumable) {
-                if (item.heal) {
-                    localPlayer.health = Math.min(100, localPlayer.health + item.heal);
-                }
-                if (item.shield) {
-                    localPlayer.shield = Math.min(100, localPlayer.shield + item.shield);
-                }
-                logNetStatus(`Used ${item.name}!`, "success");
-                return;
-            }
-
-            const now = performance.now();
-            if (now - localPlayer.lastShot < item.fireRate) return;
-            localPlayer.lastShot = now;
-
-            // Spawn Projectile
-            const dir = new THREE.Vector3(0, 0, -1);
-            dir.applyAxisAngle(new THREE.Vector3(1, 0, 0), localPlayer.rotationX);
-            dir.applyAxisAngle(new THREE.Vector3(0, 1, 0), localPlayer.rotationY);
-
-            const bulletGeo = new THREE.SphereGeometry(0.2, 8, 8);
-            const bulletMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
-            const bullet = new THREE.Mesh(bulletGeo, bulletMat);
-            bullet.position.copy(localPlayer.position).add(new THREE.Vector3(0, 1.8, 0));
-            scene.add(bullet);
-
-            bullets.push({
-                mesh: bullet,
-                direction: dir,
-                speed: 4,
-                damage: item.damage,
-                distance: 0,
-                ownerId: myPeerId
-            });
-
-            // Network Sync Shoot Event
-            broadcastNetworkEvent({
-                type: 'SHOOT',
-                origin: { x: bullet.position.x, y: bullet.position.y, z: bullet.position.z },
-                dir: { x: dir.x, y: dir.y, z: dir.z },
-                damage: item.damage
-            });
-        }
-
-        /* --- GAME LOOP & STATE UPDATES --- */
-        function updateEngine() {
-            const delta = clock.getDelta();
-
-            if (gameState === 'PLAYING') {
-                // Movement
-                const speed = keys['ShiftLeft'] ? 16 : 10;
-                const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), localPlayer.rotationY);
-                const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), localPlayer.rotationY);
-
-                const moveDir = new THREE.Vector3();
-                if (keys['KeyW']) moveDir.add(forward);
-                if (keys['KeyS']) moveDir.sub(forward);
-                if (keys['KeyD']) moveDir.add(right);
-                if (keys['KeyA']) moveDir.sub(right);
-
-                if (moveDir.lengthSq() > 0) {
-                    moveDir.normalize();
-                    localPlayer.position.addScaledVector(moveDir, speed * delta);
-                }
-
-                // Jump & Gravity
-                if (keys['Space'] && localPlayer.isGrounded) {
-                    localPlayer.velocity.y = 12;
-                    localPlayer.isGrounded = false;
-                }
-                localPlayer.velocity.y -= 32 * delta;
-                localPlayer.position.y += localPlayer.velocity.y * delta;
-                if (localPlayer.position.y <= 0) {
-                    localPlayer.position.y = 0;
-                    localPlayer.velocity.y = 0;
-                    localPlayer.isGrounded = true;
-                }
-
-                if (localPlayerMesh) {
-                    localPlayerMesh.position.copy(localPlayer.position);
-                    localPlayerMesh.rotation.y = localPlayer.rotationY;
-                }
-
-                // TPS Camera Position
-                const camOffset = new THREE.Vector3(0, 3.2, 7);
-                camOffset.applyAxisAngle(new THREE.Vector3(1, 0, 0), localPlayer.rotationX);
-                camOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), localPlayer.rotationY);
-                camera.position.copy(localPlayer.position).add(camOffset);
-                camera.lookAt(localPlayer.position.clone().add(new THREE.Vector3(0, 1.8, 0)));
-
-                // Storm Shrink & Damage
-                if (storm.radius > 20) {
-                    storm.radius -= storm.speed * delta * 10;
-                    storm.mesh.scale.set(storm.radius / 350, 1, storm.radius / 350);
-                }
-                const distToCenter = Math.hypot(localPlayer.position.x, localPlayer.position.z);
-                if (distToCenter > storm.radius) {
-                    applyDamage(0.2);
-                }
-
-                // Update Bullets & Hit Detection
-                for (let i = bullets.length - 1; i >= 0; i--) {
-                    const b = bullets[i];
-                    b.mesh.position.addScaledVector(b.direction, b.speed);
-                    b.distance += b.speed;
-
-                    // Check remote player hits
-                    if (b.ownerId === myPeerId) {
-                        for (let pid in remotePlayers) {
-                            const p = remotePlayers[pid];
-                            if (p.mesh && b.mesh.position.distanceTo(p.mesh.position) < 1.8) {
-                                broadcastNetworkEvent({ type: 'HIT_PLAYER', targetId: pid, damage: b.damage });
-                                scene.remove(b.mesh);
-                                bullets.splice(i, 1);
-                                break;
-                            }
-                        }
-                    }
-
-                    if (b.distance > 250) {
-                        scene.remove(b.mesh);
-                        bullets.splice(i, 1);
-                    }
-                }
-
-                // Sync Player Position over Network
-                syncMyStateNetwork();
-
-                // HUD updates
-                document.getElementById('hud-health-bar').style.width = `${localPlayer.health}%`;
-                document.getElementById('hud-health-num').innerText = `${Math.ceil(localPlayer.health)} / 100`;
-                document.getElementById('hud-shield-bar').style.width = `${localPlayer.shield}%`;
-                document.getElementById('hud-shield-num').innerText = `${Math.ceil(localPlayer.shield)} / 100`;
-                document.getElementById('hud-alive').innerText = Object.keys(remotePlayers).length + 1;
-                document.getElementById('hud-elims').innerText = eliminations;
-            }
-
-            if (renderer && scene && camera) {
-                renderer.render(scene, camera);
-            }
-            requestAnimationFrame(updateEngine);
-        }
-
-        function applyDamage(amount) {
-            if (localPlayer.shield > 0) {
-                localPlayer.shield -= amount;
-                if (localPlayer.shield < 0) {
-                    localPlayer.health += localPlayer.shield;
-                    localPlayer.shield = 0;
-                }
-            } else {
-                localPlayer.health -= amount;
-            }
-
-            if (localPlayer.health <= 0 && gameState === 'PLAYING') {
-                triggerGameOver(false);
-            }
-        }
-
-        function triggerGameOver(isVictory) {
-            gameState = 'GAMEOVER';
-            document.exitPointerLock();
-            document.getElementById('end-banner').innerText = isVictory ? "VICTORY ROYALE!" : "ELIMINATED";
-            document.getElementById('end-elims').innerText = eliminations;
-            document.getElementById('end-rank').innerText = isVictory ? "#1" : `#${Object.keys(remotePlayers).length + 1}`;
-            document.getElementById('end-screen').classList.remove('hidden');
-        }
-
-        function updateHUDInventory() {
-            const container = document.getElementById('hud-inventory');
-            container.innerHTML = '';
-            for (let i = 0; i < 5; i++) {
-                const item = localPlayer.inventory[i];
-                const isSelected = localPlayer.selectedSlot === i;
-                const slot = document.createElement('div');
-                slot.onclick = () => { localPlayer.selectedSlot = i; updateHUDInventory(); };
-                slot.className = `w-14 h-14 rounded-xl flex flex-col justify-center items-center border-2 transition-all cursor-pointer ${isSelected ? 'border-yellow-400 bg-slate-800 scale-105' : 'border-slate-700 bg-slate-900'}`;
-                slot.innerHTML = `
-                    <i class="fa-solid ${item.icon} text-lg" style="color: ${item.color}"></i>
-                    <span class="text-[9px] font-bold text-slate-300 mt-1">${item.name.split(' ')[0]}</span>
+        function renderTracks(tracks) {
+            const container = document.getElementById('track-list');
+            if (!container) return;
+            if (!tracks || tracks.length === 0) {
+                container.innerHTML = `
+                    <div class="p-12 text-center text-slate-500">
+                        <i class="fa-solid fa-compact-disc text-3xl mb-3 text-slate-600"></i>
+                        <p class="text-sm">No tracks found in Firebase yet. Add a raw audio link above!</p>
+                    </div>
                 `;
-                container.appendChild(slot);
-            }
-        }
-
-        function updateHUDWood() {
-            document.getElementById('hud-wood').innerText = localPlayer.wood;
-        }
-
-        /* --- INPUT EVENT LISTENERS --- */
-        window.addEventListener('keydown', (e) => {
-            keys[e.code] = true;
-            if (['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5'].includes(e.code)) {
-                localPlayer.selectedSlot = parseInt(e.code.replace('Digit', '')) - 1;
-                updateHUDInventory();
-            }
-            if (e.code === 'KeyQ') buildWoodenWall();
-        });
-
-        window.addEventListener('keyup', (e) => keys[e.code] = false);
-
-        window.addEventListener('mousedown', (e) => {
-            if (gameState !== 'PLAYING') return;
-            if (e.button === 0) useSelectedSlot();
-            if (e.button === 2) buildWoodenWall();
-        });
-
-        document.addEventListener('mousemove', (e) => {
-            if (!isPointerLocked || gameState !== 'PLAYING') return;
-            const sensitivity = 0.0022;
-            localPlayer.rotationY -= e.movementX * sensitivity;
-            localPlayer.rotationX -= e.movementY * sensitivity;
-            localPlayer.rotationX = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, localPlayer.rotationX));
-        });
-
-        document.addEventListener('pointerlockchange', () => {
-            isPointerLocked = document.pointerLockElement === renderer?.domElement;
-        });
-
-        /* --- FIREBASE & WEBRTC NETWORKING LOGIC --- */
-        function setPublicSize(size) {
-            publicLobbySize = size;
-            document.querySelectorAll('.pub-size-btn').forEach(btn => {
-                btn.className = "pub-size-btn py-2 rounded-lg font-bold text-xs bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700";
-            });
-            document.getElementById(`pub-btn-${size}`).className = "pub-size-btn py-2 rounded-lg font-bold text-xs bg-cyan-600 text-white border border-cyan-400";
-        }
-
-        function openCustomModal() { document.getElementById('custom-modal').classList.remove('hidden'); }
-        function closeCustomModal() { document.getElementById('custom-modal').classList.add('hidden'); }
-
-        function joinPublicLobby() {
-            const roomCode = 'ROOM_PUB_' + publicLobbySize;
-            localPlayer.displayName = document.getElementById('player-display-name').value || 'VictoryPlayer';
-            joinOrCreateRoom(roomCode, { maxPlayers: publicLobbySize, theme: 'grassland', stormSpeed: 'normal' });
-        }
-
-        function joinCustomByCode() {
-            const code = document.getElementById('custom-room-code-input').value.trim().toUpperCase();
-            if (!code) return alert("Please enter a valid Room Code");
-            localPlayer.displayName = document.getElementById('player-display-name').value || 'VictoryPlayer';
-            joinOrCreateRoom(code);
-        }
-
-        function createCustomLobbyAction() {
-            const code = 'FORT-' + Math.floor(Math.random() * 8999 + 1000);
-            roomSettings.maxPlayers = parseInt(document.getElementById('cust-max-players').value) || 10;
-            roomSettings.theme = document.getElementById('cust-theme').value;
-            roomSettings.stormSpeed = document.getElementById('cust-storm').value;
-            roomSettings.initialShield = document.getElementById('cust-shield').value;
-            roomSettings.githubUrl = document.getElementById('cust-github-url').value.trim();
-            localPlayer.displayName = document.getElementById('player-display-name').value || 'VictoryPlayer';
-
-            closeCustomModal();
-            joinOrCreateRoom(code, roomSettings, true);
-        }
-
-        function joinOrCreateRoom(roomId, settings = null, forceHost = false) {
-            if (!db) {
-                logNetStatus("Firebase DB unavailable, starting single-player mode", "error");
-                launchGameScene();
                 return;
             }
 
-            currentRoomId = roomId;
-            roomRef = db.ref('fortnite_rooms/' + roomId);
-
-            logNetStatus(`Connecting to Room ${roomId}...`, "info");
-
-            roomRef.child('metadata').once('value', (snapshot) => {
-                const data = snapshot.val();
-                if (!data || forceHost) {
-                    // Become Host
-                    isHost = true;
-                    roomSettings = settings || roomSettings;
-                    roomRef.child('metadata').set({
-                        hostId: myPeerId,
-                        hostName: localPlayer.displayName,
-                        settings: roomSettings,
-                        state: 'WAITING'
-                    });
-                } else {
-                    isHost = false;
-                    if (data.settings) roomSettings = data.settings;
-                }
-
-                // Register Myself in Players List
-                roomRef.child('players/' + myPeerId).set({
-                    displayName: localPlayer.displayName,
-                    joinedAt: Date.now()
-                });
-                roomRef.child('players/' + myPeerId).onDisconnect().remove();
-
-                // Open Waiting Room UI
-                openWaitingRoomUI();
-
-                // Listen for Room State & Players
-                listenRoomUpdates();
-
-                // Initiate WebRTC / DB Sync
-                initSignaling();
-            });
-        }
-
-        function openWaitingRoomUI() {
-            document.getElementById('main-menu').classList.add('hidden');
-            document.getElementById('waiting-room').classList.remove('hidden');
-            document.getElementById('wait-room-code').innerText = currentRoomId;
-            document.getElementById('wait-theme-desc').innerText = `${roomSettings.theme.toUpperCase()} • ${roomSettings.stormSpeed.toUpperCase()}`;
-            
-            if (isHost) {
-                document.getElementById('btn-start-game').classList.remove('hidden');
-            } else {
-                document.getElementById('btn-start-game').classList.add('hidden');
-            }
-        }
-
-        function listenRoomUpdates() {
-            // Listen for players joining/leaving
-            roomRef.child('players').on('value', (snapshot) => {
-                const players = snapshot.val() || {};
-                const playerListEl = document.getElementById('wait-player-list');
-                playerListEl.innerHTML = '';
-                const pKeys = Object.keys(players);
-
-                document.getElementById('wait-player-count').innerText = pKeys.length;
-                document.getElementById('wait-max-count').innerText = roomSettings.maxPlayers;
-
-                pKeys.forEach((pid) => {
-                    const p = players[pid];
-                    if (pid === myPeerId) return;
-                    createRemotePlayerMesh(pid, p.displayName || 'Player');
-
-                    const item = document.createElement('div');
-                    item.className = 'flex items-center justify-between bg-slate-900/80 px-4 py-2 rounded-xl border border-slate-800 text-xs';
-                    item.innerHTML = `
-                        <div class="flex items-center gap-2">
-                            <i class="fa-solid fa-user text-cyan-400"></i>
-                            <span class="font-bold text-white">${p.displayName || pid}</span>
+            container.innerHTML = tracks.map((track, index) => {
+                const isCurrent = window.currentPlayingId === track.id;
+                const uploaderProfile = window.allProfiles[track.addedBy] || { username: 'Unknown User', pfp: 'https://placehold.co/40x40/1e293b/8b5cf6?text=?' };
+                return `
+                    <div class="grid grid-cols-12 px-6 py-3.5 items-center hover:bg-slate-800/40 transition group cursor-pointer ${isCurrent ? 'bg-accent/10 border-l-4 border-accent' : ''}" onclick="playTrack('${track.id}')">
+                        <div class="col-span-1 text-center text-sm font-medium text-slate-400 group-hover:text-white">
+                            ${isCurrent ? '<i class="fa-solid fa-volume-high text-accent animate-pulse"></i>' : (index + 1)}
                         </div>
-                        <span class="text-emerald-400 font-semibold"><i class="fa-solid fa-check mr-1"></i> READY</span>
-                    `;
-                    playerListEl.appendChild(item);
-                });
+                        <div class="col-span-6 flex items-center space-x-3 truncate">
+                            <div class="w-9 h-9 rounded-lg bg-slate-800 flex items-center justify-center flex-shrink-0 text-accent font-semibold text-xs border border-slate-700/50 overflow-hidden">
+                                <i class="fa-solid fa-music"></i>
+                            </div>
+                            <div class="truncate">
+                                <h4 class="text-sm font-medium truncate ${isCurrent ? 'text-accent font-semibold' : 'text-slate-200'}">${escapeHtml(track.title)}</h4>
+                                <p class="text-xs text-slate-400 truncate">${escapeHtml(track.artist)}</p>
+                            </div>
+                        </div>
+                        <div class="col-span-3 hidden sm:flex items-center space-x-2 truncate">
+                            <img src="${uploaderProfile.pfp}" class="w-6 h-6 rounded-full object-cover border border-slate-700">
+                            <span class="text-xs text-slate-300 truncate">${escapeHtml(uploaderProfile.username)}</span>
+                        </div>
+                        <div class="col-span-2 text-right flex items-center justify-end space-x-2">
+                            <button onclick="event.stopPropagation(); playTrack('${track.id}')" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-accent hover:text-white flex items-center justify-center text-slate-300 transition shadow">
+                                <i class="fa-solid ${isCurrent && isPlaying ? 'fa-pause' : 'fa-play'} text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function filterTracks() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            const filtered = window.allTracks.filter(t => {
+                const uploader = window.allProfiles[t.addedBy]?.username || '';
+                return t.title.toLowerCase().includes(query) || 
+                       t.artist.toLowerCase().includes(query) ||
+                       uploader.toLowerCase().includes(query);
             });
-
-            // Listen for Host to Start Game
-            roomRef.child('metadata/state').on('value', (snapshot) => {
-                if (snapshot.val() === 'PLAYING' && gameState === 'MENU') {
-                    launchGameScene();
-                }
-            });
-
-            // Listen for Game Events (Shoot, Build, Hit) over Realtime Database Fallback
-            roomRef.child('events').on('child_added', (snapshot) => {
-                const event = snapshot.val();
-                if (!event || event.sender === myPeerId) return;
-                handleNetworkMessage(event);
-            });
-
-            // Listen for State Sync of Remote Players
-            roomRef.child('states').on('value', (snapshot) => {
-                const states = snapshot.val() || {};
-                for (let pid in states) {
-                    if (pid === myPeerId) continue;
-                    const st = states[pid];
-                    if (remotePlayers[pid] && remotePlayers[pid].mesh) {
-                        remotePlayers[pid].mesh.position.set(st.x, st.y, st.z);
-                        remotePlayers[pid].mesh.rotation.y = st.rotY;
-                    }
-                }
-            });
+            renderTracks(filtered);
         }
 
-        function copyRoomCode() {
-            navigator.clipboard.writeText(currentRoomId);
-            logNetStatus("Room Code Copied to Clipboard!", "success");
-        }
+        window.playTrack = async function(id) {
+            const track = window.allTracks.find(t => t.id === id);
+            if (!track) return;
 
-        function hostStartMatch() {
-            if (!isHost || !roomRef) return;
-            roomRef.child('metadata/state').set('PLAYING');
-            launchGameScene();
-        }
-
-        function leaveLobby() {
-            if (roomRef) {
-                roomRef.child('players/' + myPeerId).remove();
-            }
-            location.reload();
-        }
-
-        function launchGameScene() {
-            document.getElementById('waiting-room').classList.add('hidden');
-            document.getElementById('game-hud').classList.remove('hidden');
-
-            setupGameScene();
-            gameState = 'PLAYING';
-            renderer.domElement.requestPointerLock();
-        }
-
-        /* --- WEBRTC SIGNALING & DIRECT DATACHANNELS --- */
-        function initSignaling() {
-            // WebRTC Signaling over Firebase Database node 'signals'
-            const signalsRef = roomRef.child('signals/' + myPeerId);
-            signalsRef.on('child_added', async (snapshot) => {
-                const signal = snapshot.val();
-                if (!signal || signal.from === myPeerId) return;
-
-                const fromId = signal.from;
-                let pc = peerConnections[fromId];
-
-                if (!pc) pc = createPeerConnection(fromId);
-
-                if (signal.type === 'offer') {
-                    await pc.setRemoteDescription(new RTCSessionDescription(signal.offer));
-                    const answer = await pc.createAnswer();
-                    await pc.setLocalDescription(answer);
-                    roomRef.child('signals/' + fromId).push({
-                        from: myPeerId,
-                        type: 'answer',
-                        answer: answer
-                    });
-                } else if (signal.type === 'answer') {
-                    await pc.setRemoteDescription(new RTCSessionDescription(signal.answer));
-                } else if (signal.type === 'candidate') {
-                    await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
-                }
-            });
-        }
-
-        function createPeerConnection(targetPeerId) {
-            const pc = new RTCPeerConnection(rtcConfig);
-            peerConnections[targetPeerId] = pc;
-
-            pc.onicecandidate = (event) => {
-                if (event.candidate && roomRef) {
-                    roomRef.child('signals/' + targetPeerId).push({
-                        from: myPeerId,
-                        type: 'candidate',
-                        candidate: event.candidate
-                    });
-                }
-            };
-
-            pc.ondatachannel = (event) => {
-                setupDataChannel(targetPeerId, event.channel);
-            };
-
-            // If we are host or initiating connection, create channel
-            const channel = pc.createDataChannel('fortnite_channel');
-            setupDataChannel(targetPeerId, channel);
-
-            return pc;
-        }
-
-        function setupDataChannel(targetPeerId, channel) {
-            dataChannels[targetPeerId] = channel;
-            channel.onopen = () => logNetStatus(`Direct WebRTC Connected to ${targetPeerId}`, "success");
-            channel.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    handleNetworkMessage(data);
-                } catch(e){}
-            };
-        }
-
-        function broadcastNetworkEvent(data) {
-            data.sender = myPeerId;
-            const str = JSON.stringify(data);
-
-            // Send via WebRTC Data Channels first
-            let sentRTC = false;
-            for (let pid in dataChannels) {
-                if (dataChannels[pid].readyState === 'open') {
-                    dataChannels[pid].send(str);
-                    sentRTC = true;
+            window.currentPlayingId = id;
+            if (currentTitleEl) currentTitleEl.textContent = track.title;
+            if (currentArtistEl) currentArtistEl.textContent = track.artist;
+            
+            try {
+                audioPlayer.pause();
+                audioPlayer.src = track.url;
+                audioPlayer.load();
+                
+                await audioPlayer.play();
+                isPlaying = true;
+                updatePlayPauseIcon();
+                renderTracks(window.allTracks);
+            } catch (err) {
+                console.warn("Playback error:", err);
+                if (err.name !== 'AbortError') {
+                    showToast("Could not play raw link. Ensure it is a direct audio URL.", true);
                 }
             }
-
-            // Fallback: Push event to Firebase Realtime Database
-            if (!sentRTC && roomRef) {
-                roomRef.child('events').push(data);
-            }
-        }
-
-        function syncMyStateNetwork() {
-            if (!roomRef || gameState !== 'PLAYING') return;
-
-            const stateData = {
-                x: localPlayer.position.x,
-                y: localPlayer.position.y,
-                z: localPlayer.position.z,
-                rotY: localPlayer.rotationY
-            };
-
-            // Direct DataChannel broadcast
-            let sentP2P = false;
-            for (let pid in dataChannels) {
-                if (dataChannels[pid].readyState === 'open') {
-                    dataChannels[pid].send(JSON.stringify({ type: 'SYNC_STATE', state: stateData, sender: myPeerId }));
-                    sentP2P = true;
-                }
-            }
-
-            // Realtime DB fallback throttle sync
-            if (!sentP2P && Math.random() < 0.3) {
-                roomRef.child('states/' + myPeerId).set(stateData);
-            }
-        }
-
-        function createRemotePlayerMesh(pid, name) {
-            if (remotePlayers[pid]) return;
-            const mesh = createAvatarMesh(0xf43f5e, name);
-            scene.add(mesh);
-            remotePlayers[pid] = { mesh: mesh, health: 100, shield: 50 };
-        }
-
-        function handleNetworkMessage(data) {
-            if (data.type === 'SYNC_STATE') {
-                if (!remotePlayers[data.sender]) createRemotePlayerMesh(data.sender, 'Player');
-                const mesh = remotePlayers[data.sender].mesh;
-                if (mesh) {
-                    mesh.position.set(data.state.x, data.state.y, data.state.z);
-                    mesh.rotation.y = data.state.rotY;
-                }
-            } else if (data.type === 'BUILD_WALL') {
-                spawnRemoteWall(data.wall);
-            } else if (data.type === 'SHOOT') {
-                // Render remote tracer bullet
-                const bulletGeo = new THREE.SphereGeometry(0.2, 8, 8);
-                const bulletMat = new THREE.MeshBasicMaterial({ color: 0xfca5a5 });
-                const bullet = new THREE.Mesh(bulletGeo, bulletMat);
-                bullet.position.set(data.origin.x, data.origin.y, data.origin.z);
-                scene.add(bullet);
-                bullets.push({
-                    mesh: bullet,
-                    direction: new THREE.Vector3(data.dir.x, data.dir.y, data.dir.z),
-                    speed: 4,
-                    damage: data.damage,
-                    distance: 0,
-                    ownerId: data.sender
-                });
-            } else if (data.type === 'HIT_PLAYER') {
-                if (data.targetId === myPeerId) {
-                    applyDamage(data.damage);
-                }
-            }
-        }
-
-        function returnToMenu() {
-            location.reload();
-        }
-
-        /* --- LAUNCH ENGINE LOOP ON LOAD --- */
-        window.onload = () => {
-            initThreeEngine();
-            requestAnimationFrame(updateEngine);
         };
+
+        async function togglePlayPause() {
+            if (!window.currentPlayingId && window.allTracks.length > 0) {
+                await playTrack(window.allTracks[0].id);
+                return;
+            }
+            if (!window.currentPlayingId) return;
+
+            try {
+                if (isPlaying) {
+                    audioPlayer.pause();
+                    isPlaying = false;
+                } else {
+                    await audioPlayer.play();
+                    isPlaying = true;
+                }
+                updatePlayPauseIcon();
+                renderTracks(window.allTracks);
+            } catch (err) {
+                console.warn("Toggle play error:", err);
+            }
+        }
+
+        function updatePlayPauseIcon() {
+            if (!playPauseBtn) return;
+            const icon = playPauseBtn.querySelector('i');
+            if (!icon) return;
+            if (isPlaying) {
+                icon.className = "fa-solid fa-pause text-sm";
+            } else {
+                icon.className = "fa-solid fa-play text-sm ml-0.5";
+            }
+        }
+
+        function playNext() {
+            if (!window.allTracks.length) return;
+            const currentIndex = window.allTracks.findIndex(t => t.id === window.currentPlayingId);
+            const nextIndex = (currentIndex + 1) % window.allTracks.length;
+            playTrack(window.allTracks[nextIndex].id);
+        }
+
+        function playPrev() {
+            if (!window.allTracks.length) return;
+            const currentIndex = window.allTracks.findIndex(t => t.id === window.currentPlayingId);
+            const prevIndex = (currentIndex - 1 + window.allTracks.length) % window.allTracks.length;
+            playTrack(window.allTracks[prevIndex].id);
+        }
+
+        audioPlayer.addEventListener('timeupdate', () => {
+            if (audioPlayer.duration && progressBar && currentTimeEl && durationEl) {
+                const percent = (audioPlayer.currentTime / audioPlayer.duration) * 100;
+                progressBar.style.width = `${percent}%`;
+                currentTimeEl.textContent = formatTime(audioPlayer.currentTime);
+                durationEl.textContent = formatTime(audioPlayer.duration);
+            }
+        });
+
+        audioPlayer.addEventListener('ended', () => {
+            playNext();
+        });
+
+        function seekAudio(e) {
+            if (!audioPlayer.duration || !progressContainer) return;
+            const rect = progressContainer.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const width = rect.width;
+            audioPlayer.currentTime = (clickX / width) * audioPlayer.duration;
+        }
+
+        function adjustVolume(val) {
+            audioPlayer.volume = val;
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        }
+
+        function handleAddTrack(e) {
+            e.preventDefault();
+            const title = document.getElementById('track-title').value;
+            const artist = document.getElementById('track-artist').value;
+            const url = document.getElementById('track-url').value;
+
+            window.saveTrackToFirebase(title, artist, url);
+            document.getElementById('quick-add-form').reset();
+        }
+
+        function handleModalAdd(e) {
+            e.preventDefault();
+            const title = document.getElementById('modal-title').value;
+            const artist = document.getElementById('modal-artist').value;
+            const url = document.getElementById('modal-url').value;
+
+            window.saveTrackToFirebase(title, artist, url);
+            closeModal();
+            const modalForm = document.querySelector('#modal form');
+            if (modalForm) modalForm.reset();
+        }
+
+        function handleAuthSubmit(e) {
+            e.preventDefault();
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+            const username = document.getElementById('auth-username').value;
+            if (typeof window.handleAuthAction === 'function') {
+                window.handleAuthAction(email, password, username);
+            } else {
+                console.error("handleAuthAction not loaded yet.");
+            }
+        }
+
+        function toggleAuthMode() {
+            window.isRegisterMode = !window.isRegisterMode;
+            const titleEl = document.getElementById('auth-modal-title');
+            const submitBtn = document.getElementById('auth-submit-btn');
+            const switchBtn = document.getElementById('auth-switch-btn');
+            const usernameField = document.getElementById('auth-username-field');
+
+            if (window.isRegisterMode) {
+                titleEl.innerHTML = '<i class="fa-solid fa-user-plus text-accent"></i><span>Create MUSICSER Account</span>';
+                submitBtn.textContent = "Register";
+                switchBtn.innerHTML = 'Already have an account? <b>Sign In</b>';
+                usernameField.classList.remove('hidden');
+                document.getElementById('auth-username').required = true;
+            } else {
+                titleEl.innerHTML = '<i class="fa-solid fa-user-lock text-accent"></i><span>Sign In to MUSICSER</span>';
+                submitBtn.textContent = "Sign In";
+                switchBtn.innerHTML = "Don't have an account? <b>Register</b>";
+                usernameField.classList.add('hidden');
+                document.getElementById('auth-username').required = false;
+            }
+        }
+
+        function handleEditProfileSubmit(e) {
+            e.preventDefault();
+            const username = document.getElementById('edit-username').value;
+            const pfp = document.getElementById('edit-pfp').value;
+            const twitter = document.getElementById('edit-social-twitter').value;
+            const instagram = document.getElementById('edit-social-instagram').value;
+            const web = document.getElementById('edit-social-web').value;
+
+            window.updateProfileInDB(username, pfp, twitter, instagram, web);
+        }
+
+        function openAddModal() {
+            document.getElementById('modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.add('hidden');
+        }
+
+        function openAuthModal() {
+            document.getElementById('auth-modal').classList.remove('hidden');
+        }
+
+        function closeAuthModal() {
+            document.getElementById('auth-modal').classList.add('hidden');
+        }
+
+        function openEditProfileModal() {
+            if (!window.currentUserProfile) return;
+            const p = window.currentUserProfile;
+            document.getElementById('edit-username').value = p.username || '';
+            document.getElementById('edit-pfp').value = p.pfp || '';
+            document.getElementById('edit-social-twitter').value = p.socials?.twitter || '';
+            document.getElementById('edit-social-instagram').value = p.socials?.instagram || '';
+            document.getElementById('edit-social-web').value = p.socials?.web || '';
+            document.getElementById('edit-profile-modal').classList.remove('hidden');
+        }
+
+        function closeEditProfileModal() {
+            document.getElementById('edit-profile-modal').classList.add('hidden');
+        }
+
+        function showToast(msg, isError = false) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-msg');
+            if (!toast || !toastMsg) return;
+            const icon = toast.querySelector('i');
+            
+            toastMsg.textContent = msg;
+            if (isError && icon) {
+                icon.className = "fa-solid fa-circle-exclamation text-red-400";
+            } else if (icon) {
+                icon.className = "fa-solid fa-circle-check text-green-400";
+            }
+
+            toast.classList.remove('translate-y-[-150%]');
+            setTimeout(() => {
+                toast.classList.add('translate-y-[-150%]');
+            }, 3500);
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
     </script>
 </body>
 </html>
